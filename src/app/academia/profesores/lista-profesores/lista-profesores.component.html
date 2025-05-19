@@ -1,0 +1,136 @@
+<div class="profesores-container">
+  <div class="page-header">
+      <div class="header-actions">
+      <h1>Listado de Profesores</h1>
+      <button class="btn btn-success" (click)="nuevoProfesor()">
+        <i class="fa fa-plus"></i> Nuevo Profesor
+      </button>
+    </div>
+  </div>
+
+  <div class="filters-container">
+    <div class="tabs">
+      <button
+        class="tab-button"
+        [class.active]="activeTab === 'todos'"
+        (click)="setActiveTab('todos')"
+      >
+        Todos los profesores
+      </button>
+      <button
+        class="tab-button"
+        [class.active]="activeTab === 'especialidad'"
+        (click)="setActiveTab('especialidad')"
+      >
+        Buscar por especialidad
+      </button>
+    </div>
+
+    <div class="search-form" *ngIf="activeTab === 'todos'">
+      <div class="form-group">
+        <label for="nombreFilter">Nombre</label>
+        <input
+          type="text"
+          id="nombreFilter"
+          [(ngModel)]="nombreFilter"
+          class="form-control"
+          placeholder="Buscar por nombre"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="apellidoFilter">Apellido</label>
+        <input
+          type="text"
+          id="apellidoFilter"
+          [(ngModel)]="apellidoFilter"
+          class="form-control"
+          placeholder="Buscar por apellido"
+        >
+      </div>
+
+      <div class="form-buttons">
+        <button (click)="search()" class="btn btn-primary">Buscar</button>
+        <button (click)="resetFilters()" class="btn btn-secondary">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="search-form" *ngIf="activeTab === 'especialidad'">
+      <div class="form-group">
+        <label for="especialidadFilter">Especialidad</label>
+        <select
+          id="especialidadFilter"
+          [(ngModel)]="especialidadFilter"
+          class="form-control"
+        >
+          <option value="">Seleccione una especialidad</option>
+          <option *ngFor="let especialidad of especialidades" [value]="especialidad">
+            {{ especialidad }}
+          </option>
+        </select>
+      </div>
+
+      <div class="form-buttons">
+        <button (click)="search()" class="btn btn-primary">Buscar</button>
+        <button (click)="resetFilters()" class="btn btn-secondary">Limpiar</button>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Cargando profesores...</p>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger">
+    {{ error }}
+  </div>
+
+  <div *ngIf="!loading && !error">
+    <div *ngIf="profesores.length === 0" class="empty-state">
+      <p>No se encontraron profesores que coincidan con los criterios de búsqueda.</p>
+    </div>
+
+    <div *ngIf="profesores.length > 0" class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Apellido</th>
+            <th>Especialidad</th>
+            <th>Exp. (años)</th>
+            <th>Email</th>
+            <th>Teléfono</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let profesor of profesores">
+            <td>{{ profesor.id }}</td>
+            <td>{{ profesor.nombre }}</td>
+            <td>{{ profesor.apellido }}</td>
+            <td>{{ profesor.especialidad || 'N/A' }}</td>
+            <td>{{ profesor.anhosExperiencia || 'N/A' }}</td>
+            <td>{{ profesor.email || 'N/A' }}</td>
+            <td>{{ profesor.telefono || 'N/A' }}</td>
+            <td class="actions-cell">
+              <button class="btn-icon btn-view" title="Ver detalles" (click)="verProfesor(profesor.id!)">👁️</button>
+              <button class="btn-icon btn-edit" title="Editar" (click)="editarProfesor(profesor.id!)">✏️</button>
+              <button class="btn-icon btn-delete" title="Eliminar" (click)="eliminarProfesor(profesor.id!)">🗑️</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <app-pagination
+        *ngIf="page"
+        [currentPage]="currentPage"
+        [totalPages]="page.totalPages"
+        [pageSize]="pageSize"
+        [totalElements]="page.totalElements"
+        (pageChange)="onPageChange($event)"
+      ></app-pagination>
+    </div>
+  </div>
+</div>

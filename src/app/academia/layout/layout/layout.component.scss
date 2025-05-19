@@ -1,0 +1,31 @@
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Estilos para el contenido principal */
+.main-content {
+  flex: 1;
+  background-color: #f5f5f5;
+}
+
+.content-wrapper {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+/* Estilos para el pie de página */
+.app-footer {
+  background-color: #2c3e50;
+  color: #ecf0f1;
+  padding: 1.5rem;
+}
+
+.footer-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  text-align: center;
+  font-size: 0.875rem;
+}

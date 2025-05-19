@@ -1,0 +1,303 @@
+<div *ngIf="loading" style="display: flex; justify-content: center; align-items: center; height: 200px;">
+  <div style="text-align: center;">
+    <div style="border: 4px solid #f3f3f3; border-top: 4px solid #1e88e5; border-radius: 50%; width: 40px; height: 40px; animation: spin 2s linear infinite; margin: 0 auto;"></div>
+    <p style="margin-top: 16px; color: #555;">Cargando...</p>
+  </div>
+</div>
+
+<!-- Contenedor principal del formulario -->
+<div class="profesor-form-container" *ngIf="!loading">
+  <!-- Cabecera del formulario con color más vibrante -->
+  <div style="background-color: #1e88e5; color: white; padding: 18px 24px; position: relative;">
+    <h2 style="margin: 0; font-size: 22px; font-weight: 500;">{{ getMode() }} Profesor</h2>
+  </div>
+
+  <!-- Cuerpo del formulario -->
+  <div style="padding: 24px;">
+
+    <!-- Mensajes de alerta -->
+    <div *ngIf="error" style="background-color: #ffebee; color: #d32f2f; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #d32f2f; display: flex; align-items: center;">
+      <span style="margin-right: 10px; font-size: 18px;">⚠️</span>
+      <span [innerHTML]="error"></span>
+    </div>
+
+    <div *ngIf="successMessage" style="background-color: #e8f5e9; color: #2e7d32; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #2e7d32; display: flex; align-items: center;">
+      <span style="margin-right: 10px; font-size: 18px;">✅</span>
+      <span>{{ successMessage }}</span>
+    </div>
+
+    <!-- 🚀 ACTUALIZADO: Estados automáticos de validación -->
+
+    <!-- Validando username (mientras escribe) -->
+    <div style="margin-bottom: 16px; margin-top: 8px;" *ngIf="verificandoUsername">
+      <div style="background-color: #fff3e0; color: #f57c00; padding: 8px 12px; border-radius: 4px; display: flex; align-items: center; font-size: 14px;">
+        <span style="margin-right: 6px;">⏳</span>
+        <span>Verificando disponibilidad...</span>
+      </div>
+    </div>
+
+    <!-- Username disponible -->
+    <div style="margin-bottom: 16px; margin-top: 8px;" *ngIf="usernameValidated && !usernameExists && !verificandoUsername">
+      <div style="background-color: #e8f5e9; color: #2e7d32; padding: 8px 12px; border-radius: 4px; display: flex; align-items: center; font-size: 14px;">
+        <span style="margin-right: 6px;">✅</span>
+        <span>Nombre de usuario disponible</span>
+      </div>
+    </div>
+
+    <!-- Username no disponible -->
+    <div style="margin-bottom: 16px; margin-top: 8px;" *ngIf="usernameValidated && usernameExists && !verificandoUsername">
+      <div style="background-color: #ffebee; color: #d32f2f; padding: 8px 12px; border-radius: 4px; display: flex; align-items: center; font-size: 14px;">
+        <span style="margin-right: 6px;">❌</span>
+        <span>Este nombre de usuario ya está en uso</span>
+      </div>
+    </div>
+
+    <!-- Único formulario que maneja todos los datos -->
+    <form (ngSubmit)="guardar()">
+      <!-- Datos del profesor -->
+      <div [formGroup]="profesorForm">
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 20px;">
+          <!-- Nombre -->
+          <div style="margin-bottom: 16px;">
+            <label for="nombre" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+              Nombre <span style="color: #e53935;">*</span>
+            </label>
+            <input
+              type="text"
+              id="nombre"
+              formControlName="nombre"
+              style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box;"
+              [ngStyle]="{'border-color': profesorForm.get('nombre')?.invalid && profesorForm.get('nombre')?.touched ? '#e53935' : '#ddd'}">
+            <div *ngIf="profesorForm.get('nombre')?.invalid && profesorForm.get('nombre')?.touched" style="color: #e53935; font-size: 13px; margin-top: 5px;">
+              El nombre es obligatorio
+            </div>
+          </div>
+
+          <!-- Apellido -->
+          <div style="margin-bottom: 16px;">
+            <label for="apellido" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+              Apellido <span style="color: #e53935;">*</span>
+            </label>
+            <input
+              type="text"
+              id="apellido"
+              formControlName="apellido"
+              style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box;"
+              [ngStyle]="{'border-color': profesorForm.get('apellido')?.invalid && profesorForm.get('apellido')?.touched ? '#e53935' : '#ddd'}">
+            <div *ngIf="profesorForm.get('apellido')?.invalid && profesorForm.get('apellido')?.touched" style="color: #e53935; font-size: 13px; margin-top: 5px;">
+              El apellido es obligatorio
+            </div>
+          </div>
+
+          <!-- Especialidad -->
+          <div style="margin-bottom: 16px;">
+            <label for="especialidad" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+              Especialidad <span style="color: #e53935;">*</span>
+            </label>
+            <input
+              type="text"
+              id="especialidad"
+              formControlName="especialidad"
+              style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box;"
+              [ngStyle]="{'border-color': profesorForm.get('especialidad')?.invalid && profesorForm.get('especialidad')?.touched ? '#e53935' : '#ddd'}">
+            <div *ngIf="profesorForm.get('especialidad')?.invalid && profesorForm.get('especialidad')?.touched" style="color: #e53935; font-size: 13px; margin-top: 5px;">
+              La especialidad es obligatoria
+            </div>
+          </div>
+
+          <!-- Años de Experiencia -->
+          <div style="margin-bottom: 16px;">
+            <label for="anhosExperiencia" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+              Años de Experiencia <span style="color: #e53935;">*</span>
+            </label>
+            <input
+              type="number"
+              id="anhosExperiencia"
+              formControlName="anhosExperiencia"
+              style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box;"
+              [ngStyle]="{'border-color': profesorForm.get('anhosExperiencia')?.invalid && profesorForm.get('anhosExperiencia')?.touched ? '#e53935' : '#ddd'}">
+            <div *ngIf="profesorForm.get('anhosExperiencia')?.invalid && profesorForm.get('anhosExperiencia')?.touched" style="color: #e53935; font-size: 13px; margin-top: 5px;">
+              Los años de experiencia son obligatorios y deben estar entre 0 y 100
+            </div>
+          </div>
+
+          <!-- Email -->
+          <div style="margin-bottom: 16px;">
+            <label for="email" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+              Email
+            </label>
+            <input
+              type="email"
+              id="email"
+              formControlName="email"
+              style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box;"
+              [ngStyle]="{'border-color': profesorForm.get('email')?.invalid && profesorForm.get('email')?.touched ? '#e53935' : '#ddd'}">
+            <div *ngIf="profesorForm.get('email')?.invalid && profesorForm.get('email')?.touched" style="color: #e53935; font-size: 13px; margin-top: 5px;">
+              Email inválido
+            </div>
+          </div>
+
+          <!-- Teléfono -->
+          <div style="margin-bottom: 16px;">
+            <label for="telefono" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+              Teléfono
+            </label>
+            <input
+              type="tel"
+              id="telefono"
+              formControlName="telefono"
+              style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box;">
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección de Usuario -->
+      <div *ngIf="mode !== 'view'" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #eee;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="margin: 0; font-size: 18px; font-weight: 500;">Datos de Usuario</h3>
+
+          <!-- Información en lugar de toggle en modo crear -->
+          <div *ngIf="!usuarioExistente && mode === 'crear'" style="background-color: #e3f2fd; color: #1976d2; padding: 8px 16px; border-radius: 6px; margin-left: 10px; font-size: 14px;">
+            <span>⚠️ Se creará automáticamente un usuario para el profesor</span>
+          </div>
+
+          <!-- Toggle en edit sin usuario -->
+          <div *ngIf="!usuarioExistente && mode === 'edit'">
+            <button
+              type="button"
+              (click)="toggleCrearUsuario()"
+              style="padding: 8px 16px; background-color: #f5f5f5; color: #333; border: none; border-radius: 6px; font-weight: 500; cursor: pointer;">
+              {{ crearUsuario ? 'No crear usuario' : 'Crear usuario' }}
+            </button>
+          </div>
+
+          <div *ngIf="usuarioExistente" style="background-color: #e8f5e9; color: #2e7d32; padding: 8px 16px; border-radius: 6px;">
+            <span>Usuario asociado: {{ usuarioExistente.username }}</span>
+          </div>
+        </div>
+
+        <!-- Formulario de usuario - Siempre visible en crear -->
+        <div *ngIf="(crearUsuario && !usuarioExistente) || mode === 'crear'" style="margin-top: 16px;">
+          <div [formGroup]="usuarioForm">
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+              <!-- Nombre de usuario -->
+              <div style="margin-bottom: 16px;">
+                <label for="username" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                  Nombre de usuario <span style="color: #e53935;">*</span>
+                  <span style="color: #666; font-weight: normal; font-size: 13px;">(Se valida automáticamente)</span>
+                </label>
+                <input
+                  type="text"
+                  id="username"
+                  formControlName="username"
+                  placeholder="Escribe tu nombre de usuario..."
+                  style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box;"
+                  [ngStyle]="{'border-color': usuarioForm.get('username')?.invalid && usuarioForm.get('username')?.touched ? '#e53935' : (usernameValidated && !usernameExists ? '#4caf50' : '#ddd')}">
+                <div *ngIf="usuarioForm.get('username')?.invalid && usuarioForm.get('username')?.touched" style="color: #e53935; font-size: 13px; margin-top: 5px;">
+                  <span *ngIf="usuarioForm.get('username')?.errors?.['required']">El nombre de usuario es obligatorio</span>
+                  <span *ngIf="usuarioForm.get('username')?.errors?.['minlength']">El nombre de usuario debe tener al menos 4 caracteres</span>
+                  <span *ngIf="usuarioForm.get('username')?.errors?.['maxlength']">El nombre de usuario no puede tener más de 50 caracteres</span>
+                  <span *ngIf="usuarioForm.get('username')?.errors?.['usernameTaken']">Este nombre de usuario ya existe</span>
+                </div>
+
+                <!-- 🚀 OPCIONAL: Mantener botón manual por si se necesita -->
+                <div style="margin-top: 10px;" *ngIf="usuarioForm.get('username')?.value && usuarioForm.get('username')?.value.length >= 4">
+                  <button
+                    type="button"
+                    (click)="verificarUsername()"
+                    [disabled]="verificandoUsername"
+                    style="padding: 6px 12px; background-color: #f5f5f5; color: #333; border: none; border-radius: 4px; font-weight: 500; cursor: pointer; font-size: 13px;">
+                    <span *ngIf="!verificandoUsername">Verificar manualmente</span>
+                    <span *ngIf="verificandoUsername">Verificando...</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Contraseña -->
+              <div style="margin-bottom: 16px;">
+                <label for="password" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                  Contraseña <span style="color: #e53935;">*</span>
+                </label>
+                <input
+                  type="password"
+                  id="password"
+                  formControlName="password"
+                  style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box;"
+                  [ngStyle]="{'border-color': usuarioForm.get('password')?.invalid && usuarioForm.get('password')?.touched ? '#e53935' : '#ddd'}">
+                <div *ngIf="usuarioForm.get('password')?.invalid && usuarioForm.get('password')?.touched" style="color: #e53935; font-size: 13px; margin-top: 5px;">
+                  La contraseña es obligatoria y debe tener al menos 6 caracteres
+                </div>
+              </div>
+
+              <!-- Confirmar Contraseña -->
+              <div style="margin-bottom: 16px;">
+                <label for="confirmarPassword" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                  Confirmar Contraseña <span style="color: #e53935;">*</span>
+                </label>
+                <input
+                  type="password"
+                  id="confirmarPassword"
+                  formControlName="confirmarPassword"
+                  style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box;"
+                  [ngStyle]="{'border-color': usuarioForm.hasError('passwordMismatch') && usuarioForm.get('confirmarPassword')?.touched ? '#e53935' : '#ddd'}">
+                <div *ngIf="usuarioForm.hasError('passwordMismatch') && usuarioForm.get('confirmarPassword')?.touched" style="color: #e53935; font-size: 13px; margin-top: 5px;">
+                  Las contraseñas no coinciden
+                </div>
+              </div>
+
+              <!-- Usar mismo nombre y apellido -->
+              <div style="margin-bottom: 16px; display: flex; align-items: center; grid-column: span 2;">
+                <input
+                  type="checkbox"
+                  id="usarMismoNombre"
+                  formControlName="usarMismoNombre"
+                  style="margin-right: 8px;">
+                <label for="usarMismoNombre" style="font-weight: 500; color: #333;">
+                  Usar los mismos nombre y apellido del profesor
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Opción de sincronización para usuarios existentes -->
+        <div *ngIf="usuarioExistente && mode === 'edit'" style="margin-top: 16px;">
+          <div [formGroup]="usuarioForm">
+            <div style="margin-bottom: 16px; display: flex; align-items: center;">
+              <input
+                type="checkbox"
+                id="usarMismoNombre"
+                formControlName="usarMismoNombre"
+                style="margin-right: 8px;">
+              <label for="usarMismoNombre" style="font-weight: 500; color: #333;">
+                Sincronizar nombre y apellido con el usuario
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botones de acción -->
+      <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #eee;">
+        <!-- Botón Cancelar -->
+        <button
+          type="button"
+          (click)="cancelar()"
+          style="padding: 10px 20px; background-color: #f5f5f5; color: #333; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; min-width: 100px;">
+          Cancelar
+        </button>
+
+        <!-- Botón Guardar - solo visible en modos editar o crear -->
+        <button
+          *ngIf="mode === 'edit' || mode === 'crear'"
+          type="button"
+          (click)="guardar()"
+          [disabled]="loading"
+          style="padding: 10px 20px; background-color: #1e88e5; color: white; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; min-width: 100px;">
+          <span *ngIf="!loading">Guardar</span>
+          <span *ngIf="loading">Guardando...</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

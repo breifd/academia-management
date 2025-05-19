@@ -1,0 +1,118 @@
+<section class="welcome-section">
+  <div class="welcome-header">
+    <h1>Bienvenido a la Academia</h1>
+    <p *ngIf="usuario">¡Hola, {{ usuario.nombre }} {{ usuario.apellido }}!</p>
+  </div>
+</section>
+
+<section class="dashboard-section">
+  <h2>Panel de Administración</h2>
+
+  <div class="dashboard-grid">
+    <div class="dashboard-card">
+      <div class="card-icon">👨‍🏫</div>
+      <div class="card-content">
+        <h3>Profesores</h3>
+        <p>Gestiona el listado de profesores y sus especialidades.</p>
+        <div class="card-actions">
+          <a routerLink="/profesores" class="btn btn-primary">Ver Profesores</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard-card">
+      <div class="card-icon">👨‍🎓</div>
+      <div class="card-content">
+        <h3>Alumnos</h3>
+        <p>Administra la información de los alumnos matriculados.</p>
+        <div class="card-actions">
+          <a routerLink="/alumnos" class="btn btn-primary">Ver Alumnos</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard-card">
+      <div class="card-icon">📚</div>
+      <div class="card-content">
+        <h3>Cursos</h3>
+        <p>Gestiona los cursos disponibles en la academia.</p>
+        <div class="card-actions">
+          <a routerLink="/cursos" class="btn btn-primary">Ver Cursos</a>
+        </div>
+      </div>
+    </div>
+    <div class="dashboard-card">
+      <div class="card-icon">📝</div>
+      <div class="card-content">
+        <h3>Tareas</h3>
+        <p>Gestiona las tareas y evaluaciones del curso.</p>
+        <div class="card-actions">
+          <a routerLink="/tareas" class="btn btn-primary">Ver Tareas</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="quick-stats-section">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2>Estadísticas Rápidas</h2>
+    <button
+      *ngIf="!estadisticas.loading"
+      (click)="recargarEstadisticas()"
+      class="btn btn-secondary"
+      style="padding: 8px 16px; font-size: 14px;"
+      title="Actualizar estadísticas">
+      🔄 Actualizar
+    </button>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="estadisticas.loading" class="loading-stats">
+    <div style="text-align: center; padding: 40px; color: #666;">
+      <div style="border: 4px solid #f3f3f3; border-top: 4px solid #1e88e5; border-radius: 50%; width: 40px; height: 40px; animation: spin 2s linear infinite; margin: 0 auto 16px;"></div>
+      <p>Cargando estadísticas...</p>
+    </div>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="estadisticas.error && !estadisticas.loading" class="error-stats">
+    <div style="background-color: #ffebee; color: #d32f2f; padding: 16px; border-radius: 8px; text-align: center;">
+      <p>{{ estadisticas.error }}</p>
+      <button (click)="recargarEstadisticas()" class="btn btn-primary" style="margin-top: 10px;">
+        Reintentar
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats Grid -->
+  <div *ngIf="!estadisticas.loading && !estadisticas.error" class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value">{{ estadisticas.totalProfesores }}</div>
+      <div class="stat-label">Profesores</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-value">{{ estadisticas.totalAlumnos }}</div>
+      <div class="stat-label">Alumnos</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-value">{{ estadisticas.totalCursos }}</div>
+      <div class="stat-label">Cursos</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-value">{{ estadisticas.totalEspecialidades }}</div>
+      <div class="stat-label">Especialidades</div>
+    </div>
+  </div>
+</section>
+
+<!-- Agregamos estilos para el spinner -->
+<style>
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+</style>

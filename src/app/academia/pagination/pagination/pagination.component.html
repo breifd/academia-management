@@ -1,0 +1,48 @@
+<div class="pagination-container">
+  <div class="pagination-info">
+    Mostrando {{ startItem }}-{{ endItem }} de {{ totalElements }} elementos
+  </div>
+  <div class="pagination-controls">
+    <button
+      class="pagination-button"
+      [disabled]="currentPage === 0"
+      (click)="changePage(0)"
+      aria-label="Primera página"
+    >
+      &laquo;
+    </button>
+    <button
+      class="pagination-button"
+      [disabled]="currentPage === 0"
+      (click)="changePage(currentPage - 1)"
+      aria-label="Página anterior"
+    >
+      &lsaquo;
+    </button>
+    <button
+      *ngFor="let page of pages"
+      class="pagination-button"
+      [class.active]="page === currentPage"
+      (click)="changePage(page)"
+      attr.aria-label="Página {{ page + 1 }}"
+    >
+      {{ page + 1 }}
+    </button>
+    <button
+      class="pagination-button"
+      [disabled]="currentPage === totalPages - 1 || totalPages === 0"
+      (click)="changePage(currentPage + 1)"
+      aria-label="Página siguiente"
+    >
+      &rsaquo;
+    </button>
+    <button
+      class="pagination-button"
+      [disabled]="currentPage === totalPages - 1 || totalPages === 0"
+      (click)="changePage(totalPages - 1)"
+      aria-label="Última página"
+    >
+      &raquo;
+    </button>
+  </div>
+</div>

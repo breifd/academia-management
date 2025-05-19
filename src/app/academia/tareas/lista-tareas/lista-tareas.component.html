@@ -1,0 +1,117 @@
+<div class="tareas-container">
+  <div class="page-header">
+    <div class="header-actions">
+      <h1>Listado de Tareas</h1>
+      <button class="btn btn-success" (click)="nuevaTarea()">
+        <i class="fa fa-plus"></i> Nueva Tarea
+      </button>
+    </div>
+  </div>
+
+  <div class="filters-container">
+    <div class="tabs">
+      <button
+        class="tab-button"
+        [class.active]="activeTab === 'todos'"
+        (click)="setActiveTab('todos')"
+      >
+        Todas las tareas
+      </button>
+      <button
+        class="tab-button"
+        [class.active]="activeTab === 'pendientes'"
+        (click)="setActiveTab('pendientes')"
+      >
+        Pendientes
+      </button>
+      <button
+        class="tab-button"
+        [class.active]="activeTab === 'vencidas'"
+        (click)="setActiveTab('vencidas')"
+      >
+        Vencidas
+      </button>
+    </div>
+
+    <div class="search-form">
+      <div class="form-group">
+        <label for="nombreFilter">Buscar por nombre</label>
+        <input
+          type="text"
+          id="nombreFilter"
+          [(ngModel)]="nombreFilter"
+          class="form-control"
+          placeholder="Nombre de la tarea"
+        >
+      </div>
+
+      <div class="form-buttons">
+        <button (click)="search()" class="btn btn-primary">Buscar</button>
+        <button (click)="resetFilters()" class="btn btn-secondary">Limpiar</button>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Cargando tareas...</p>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger">
+    {{ error }}
+  </div>
+
+  <div *ngIf="!loading && !error">
+    <div *ngIf="tareas.length === 0" class="empty-state">
+      <p>No se encontraron tareas que coincidan con los criterios de búsqueda.</p>
+    </div>
+
+    <div *ngIf="tareas.length > 0" class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Descripción</th>
+            <th>Fecha Publicación</th>
+            <th>Fecha Límite</th>
+            <th>Documento</th>
+            <th>Nota</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let tarea of tareas" [class.tarea-vencida]="isTareaVencida(tarea)">
+            <td>{{ tarea.id }}</td>
+            <td>{{ tarea.nombre }}</td>
+            <td>{{ tarea.descripcion || 'N/A' }}</td>
+            <td>{{ formatFecha(tarea.fechaPublicacion) }}</td>
+            <td>{{ formatFecha(tarea.fechaLimite) }}</td>
+            <td>
+              <div *ngIf="tieneDocumento(tarea)">
+                <span class="badge badge-success">Documento cargado</span>
+                <button class="btn-icon btn-download" title="Descargar documento" (click)="descargarDocumento(tarea.id!)">📥</button>
+              </div>
+              <span *ngIf="!tieneDocumento(tarea)" class="badge badge-warning">Sin documento</span>
+            </td>
+            <td>{{ formatNota(tarea) }}</td>
+            <td class="actions-cell">
+              <button class="btn-icon btn-view" title="Ver detalles" (click)="verTarea(tarea.id!)">👁️</button>
+              <button class="btn-icon btn-edit" title="Editar" (click)="editarTarea(tarea.id!)">✏️</button>
+              <button class="btn-icon btn-delete" title="Eliminar" (click)="eliminarTarea(tarea.id!)">🗑️</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <app-pagination
+        *ngIf="page"
+        [currentPage]="currentPage"
+        [totalPages]="page.totalPages"
+        [pageSize]="pageSize"
+        [totalElements]="page.totalElements"
+        (pageChange)="onPageChange($event)"
+      ></app-pagination>
+    </div>
+  </div>
+</div>

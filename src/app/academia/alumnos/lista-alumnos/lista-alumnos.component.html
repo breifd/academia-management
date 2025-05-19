@@ -1,0 +1,97 @@
+
+<div class="alumnos-container">
+  <div class="page-header">
+    <div class="header-actions">
+      <h1>Listado de Alumnos</h1>
+      <button class="btn btn-success" (click)="nuevoAlumno()">
+        <i class="fa fa-plus"></i> Nuevo Alumno
+      </button>
+    </div>
+  </div>
+  <div class="filters-container">
+    <div class="search-form">
+      <div class="form-group">
+        <label for="nombreFilter">Nombre</label>
+        <input
+          type="text"
+          id="nombreFilter"
+          [(ngModel)]="nombreFilter"
+          class="form-control"
+          placeholder="Buscar por nombre"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="apellidoFilter">Apellido</label>
+        <input
+          type="text"
+          id="apellidoFilter"
+          [(ngModel)]="apellidoFilter"
+          class="form-control"
+          placeholder="Buscar por apellido"
+        >
+      </div>
+
+      <div class="form-buttons">
+        <button (click)="buscar()" class="btn btn-primary">Buscar</button>
+        <button (click)="resetFilters()" class="btn btn-secondary">Limpiar</button>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Cargando alumnos...</p>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger">
+    {{ error }}
+  </div>
+
+  <div *ngIf="!loading && !error">
+    <div *ngIf="alumnos.length === 0" class="empty-state">
+      <p>No se encontraron alumnos que coincidan con los criterios de búsqueda.</p>
+    </div>
+
+    <div *ngIf="alumnos.length > 0" class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Apellido</th>
+            <th>Fecha de Nacimiento</th>
+            <th>Email</th>
+            <th>Teléfono</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let alumno of alumnos">
+            <td>{{ alumno.id }}</td>
+            <td>{{ alumno.nombre }}</td>
+            <td>{{ alumno.apellido }}</td>
+            <td>{{ formatDate(alumno.fechaNacimiento) }}</td>
+            <td>{{ alumno.email || 'N/A' }}</td>
+            <td>{{ alumno.telefono || 'N/A' }}</td>
+            <td class="actions-cell">
+              <button class="btn-icon btn-view" title="Ver detalles" (click)="verAlumno(alumno.id!)">👁️</button>
+              <button class="btn-icon btn-edit" title="Editar" (click)="editarAlumno(alumno.id!)">✏️</button>
+              <button class="btn-icon btn-delete" title="Eliminar" (click)="eliminarAlumno(alumno.id!)">🗑️</button>
+              <button class="btn-icon btn-tasks" title="Ver tareas" (click)="verTareas()">📝</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <app-pagination
+        *ngIf="page"
+        [currentPage]="currentPage"
+        [totalPages]="page.totalPages"
+        [pageSize]="pageSize"
+        [totalElements]="page.totalElements"
+        (pageChange)="onPageChange($event)"
+      ></app-pagination>
+    </div>
+  </div>
+</div>
