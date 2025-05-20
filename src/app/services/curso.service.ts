@@ -5,13 +5,14 @@ import { CursoEntity } from '../interfaces/curso-entity';
 import { Page } from '../interfaces/page';
 import { ProfesorEntity } from '../interfaces/profesor-entity';
 import { AlumnoEntity } from '../interfaces/alumno-entity';
+import { ProfesoresComponent } from '../academia/profesores/lista-profesores/lista-profesores.component';
 
 @Injectable({
   providedIn: 'root'
 })
 export class CursoService {
   private apiUrl = 'http://localhost:8080/api/cursos';
-
+  private defaultMaxAlumnos : number =30;
   constructor(private http: HttpClient) { }
 
   // Obtener todos los cursos paginados
@@ -104,9 +105,25 @@ export class CursoService {
   }
 
   // Calcular plazas disponibles (si hay un límite)
-  getPlazasDisponibles(curso: CursoEntity, maxAlumnos: number = 30): number {
+  getPlazasDisponibles(curso: CursoEntity, maxAlumnos: number = this.defaultMaxAlumnos): number {
     const numAlumnos = this.getNumeroAlumnos(curso);
     return Math.max(0, maxAlumnos - numAlumnos);
+  }
+  hasPlazasDisponibles(curso : CursoEntity, maxAlumnos : number =this.defaultMaxAlumnos): boolean{
+    return this.getPlazasDisponibles(curso, maxAlumnos)>0;
+  }
+  formatProfesoresList(profesores : ProfesorEntity[]): string{
+    if(!profesores || profesores.length  === 0){
+      return "Sin profesores"
+    }
+    else if(profesores.length <=2){
+      // Muestra los nombres y apellidos de los profesores que están impartiendo el curso
+      return profesores.map(p=> `${p.nombre} ${p.apellido}`).join(', ');
+    }
+    return `${profesores[0].nombre} ${profesores[0].apellido} y ${profesores.length-1} más`
+  }
+  getMaxAlumnos(): number{
+    return this.defaultMaxAlumnos;
   }
   assignProfesorToCurso(cursoId: number, profesorId: number): Observable<CursoEntity> {
     return this.http.post<CursoEntity>(`${this.apiUrl}/${cursoId}/profesores/${profesorId}`, {});
@@ -156,19 +173,9 @@ export class CursoService {
 
   // === MÉTODOS DE BÚSQUEDA AVANZADA ===
 
-  getCursosSinProfesores(page: number = 0, size: number = 5, sort: string = 'id', direction: string = 'asc'): Observable<Page<CursoEntity>> {
+  getCursosConPlazasDisponibles(plazasMinimas: number = 5, page: number = 0, size: number = 5, sort: string = 'id', direction: string = 'asc'): Observable<Page<CursoEntity>> {
     let params = new HttpParams()
-      .set('page', page.toString())
-      .set('size', size.toString())
-      .set('sort', sort)
-      .set('direction', direction);
-
-    return this.http.get<Page<CursoEntity>>(`${this.apiUrl}/sin-profesores`, { params });
-  }
-
-  getCursosConPlazasDisponibles(maxAlumnos: number = 30, page: number = 0, size: number = 5, sort: string = 'id', direction: string = 'asc'): Observable<Page<CursoEntity>> {
-    let params = new HttpParams()
-      .set('maxAlumnos', maxAlumnos.toString())
+      .set('plazasMinimas', plazasMinimas.toString())
       .set('page', page.toString())
       .set('size', size.toString())
       .set('sort', sort)

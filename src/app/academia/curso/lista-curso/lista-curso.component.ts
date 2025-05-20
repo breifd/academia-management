@@ -6,6 +6,12 @@ import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PaginationComponent } from '../../pagination/pagination/pagination.component';
+import { ProfesorEntity } from '../../../interfaces/profesor-entity';
+import { AlumnoEntity } from '../../../interfaces/alumno-entity';
+import { AlumnoService } from '../../../services/alumno.service';
+import { ProfesorService } from '../../../services/profesor.service';
+import { forkJoin, map, of, switchMap } from 'rxjs';
+import { fromReadableStreamLike } from 'rxjs/internal/observable/innerFrom';
 
 @Component({
   selector: 'app-lista-curso',
@@ -26,20 +32,41 @@ export class ListaCursoComponent implements OnInit{
   sortDirection: string = 'asc';
   nombreFilter: string = '';
   nivelFilter: string = '';
+  plazasMinimas: number= 1;
 
   isSearchActive: boolean = false; // Propiedad para saber si hay una búsqueda activa
+  activeTab : 'todos' | 'nivel' | 'disponibles'='todos';
 
 
   // Propiedades para manejar el estado de carga y errores
   loading: boolean = false;
   error: string | null = null;
-  activeTab: 'todos' | 'nivel' = 'todos';
 
-  constructor(private cursoService: CursoService, private router : Router) {}
+  // Propiedades para el modal de profesores
+  showProfesorModal: boolean = false;
+  loadingProfesores: boolean = false;
+  profesoresDisponibles: ProfesorEntity[] = [];
+  selectedProfesorId: number | null = null;
+
+  // Propiedades para el modal de alumnos
+  showAlumnoModal: boolean = false;
+  loadingAlumnos: boolean = false;
+  alumnosDisponibles: AlumnoEntity[] = [];
+  selectedAlumnoId: number | null = null;
+
+  //Curso seleccionado donde realizar modificaciones
+  cursoSeleccionado : CursoEntity | null = null;
+
+   // Estado de procesamiento
+  processingAction: boolean = false;
+
+  constructor(private cursoService: CursoService, private router : Router, private alumnoService : AlumnoService, private profesorService: ProfesorService) {
+    this.niveles = this.cursoService.getNiveles();
+  }
 
   ngOnInit(): void {
     this.loadCursos(); // Carga los cursos al inicializar el componente
-    this.niveles
+
   }
 
   loadCursos():void{
@@ -55,6 +82,7 @@ export class ListaCursoComponent implements OnInit{
         this.page = page; // Se asigna la página de cursos a la propiedad page
         this.cursos = page.content; // Se asigna el contenido de la página a la propiedad cursos
         this.loading = false; // Se establece el estado de carga a falso
+        console.log('Cursos cargados:', this.cursos); // Añade esto para depuración
       },
       error: (err) => {
         this.error = 'Error al cargar los cursos'; // Se asigna un mensaje de error
@@ -65,10 +93,6 @@ export class ListaCursoComponent implements OnInit{
   }
 
   buscar():void{
-    // Se establece el estado de carga y se inicializan las propiedades de error y búsqueda
-    this.loading = true;
-    this.error = null;
-
     // Se verifica si hay filtros activos
     if(!this.isSearchActive && !this.nombreFilter.trim() && this.activeTab === 'todos'){
       this.loadCursos(); // Si no hay filtros, se cargan todos los cursos
@@ -82,11 +106,15 @@ export class ListaCursoComponent implements OnInit{
       this.currentPage = 0; // Se resetea la página a 0 para mostrar los resultados de la búsqueda
     }
     this.isSearchActive = true; // Se marca que hay una búsqueda activa
-    if(this.activeTab === 'nivel'){
-      this.buscarPorNivel();
-    }
-    else{
-      this.buscarPorNombre();
+    switch(this.activeTab){
+      case 'nivel':
+        this.buscarPorNivel();
+        break;
+      case 'disponibles':
+        this.buscarCursosDisponibles();
+        break;
+      default:
+        this.buscarPorNombre();
     }
   }
 
@@ -125,13 +153,30 @@ export class ListaCursoComponent implements OnInit{
       }
     });
   }
+
+  buscarCursosDisponibles():void{
+    const plazasMinimas= this.plazasMinimas || 1;
+    this.cursoService.getCursosConPlazasDisponibles(plazasMinimas, this.currentPage, this.pageSize, this.sortBy, this.sortDirection).subscribe({
+      next: (page)=>{
+        this.page=page;
+        this.cursos=page.content;
+        this.loading=false;
+      }, error: (err)=>{
+        this.error="Error al buscar con plazas disponibles"
+        this.loading=true;
+        console.log("Error: ",err)
+      }
+    });
+  }
+
+
   onPageChange(page: number): void {
     this.currentPage = page;
     this.buscar();
   }
 
   // Método para cambiar la pestaña activa
-  setActiveTab(tab: 'todos' | 'nivel'): void {
+  setActiveTab(tab: 'todos' | 'nivel' | 'disponibles'): void {
     if (this.activeTab !== tab) {
       this.activeTab = tab;
       this.resetFilters();
@@ -143,6 +188,7 @@ export class ListaCursoComponent implements OnInit{
     this.nivelFilter = '';
     this.currentPage = 0;
     this.isSearchActive = false;
+    this.plazasMinimas=1;
 
     if (this.activeTab === 'todos') {
       this.loadCursos();
@@ -180,4 +226,176 @@ export class ListaCursoComponent implements OnInit{
     this.router.navigate(['/cursos/nuevo'], { queryParams });
   }
 
+   formatProfesores(curso: CursoEntity): string {
+    return this.cursoService.formatProfesoresList(curso.profesores ?? []);
+  }
+
+  getNumeroAlumnos(curso: CursoEntity): number {
+    if (!curso.alumnos) {
+      return 0;
+    }
+    return Array.isArray(curso.alumnos) ? curso.alumnos.length : 0;
+  }
+   getFullProfesoresList(curso: CursoEntity): string {
+    if (!curso.profesores || curso.profesores.length === 0) {
+      return 'No hay profesores asignados';
+    }
+
+    return curso.profesores.map(p => `${p.nombre} ${p.apellido}`).join(', ');
+  }
+  hasPlazasDisponibles(curso: CursoEntity | null): boolean {
+    if (!curso) {
+      return false;
+    }
+
+    return this.cursoService.hasPlazasDisponibles(curso);
+  }
+  getPlazasDisponibles(curso: CursoEntity | null): number {
+    if (!curso) {
+      return 0;
+    }
+
+    return this.cursoService.getPlazasDisponibles(curso);
+  }
+
+  getMaxAlumnos(): number {
+    return this.cursoService.getMaxAlumnos();
+  }
+  abrirModalProfesor(curso : CursoEntity): void{
+    this.cursoSeleccionado= curso;
+    this.showProfesorModal=true;
+    this.loadingProfesores=true;
+    this.selectedProfesorId=null;
+
+    //Obtenemos todos los profesores y filtrar los que ya están en el curso
+    forkJoin({
+      todos: this.profesorService.getProfesoresLista(),
+      asignados: this.cursoService.getProfesoresByCurso(curso.id!)
+    }).subscribe({
+      next: (r) =>{
+        const profesoresAsignados = r.asignados;
+        const profesoresAsignadosIds = profesoresAsignados.map(p => p.id);
+
+         this.profesoresDisponibles = r.todos.filter(
+          profesor => !profesoresAsignadosIds.includes(profesor.id)
+        );
+        this.loadingProfesores=false;
+      }, error: (err) =>{
+        console.error("Error al cargar el profesor ",err)
+        this.loadingProfesores=false;
+        this.error="Error al cargar la lista de profesores"
+      }
+    })
+  }
+
+  abrirModalAlumno(curso: CursoEntity): void {
+    // No abrir el modal si no hay plazas disponibles
+    if (!this.hasPlazasDisponibles(curso)) {
+      return;
+    }
+
+    this.cursoSeleccionado = curso;
+    this.showAlumnoModal = true;
+    this.loadingAlumnos = true;
+    this.selectedAlumnoId = null;
+
+    // Obtener la lista de alumnos y filtrar los que ya están matriculados en el curso
+    forkJoin({
+      todos: this.alumnoService.getAlumnos(0, 1000).pipe(
+        map( page => page.content)
+      ),
+      matriculados: this.cursoService.getAlumnosByCurso(curso.id!)
+    }).subscribe({
+      next: (r) => {
+        // Filtrar alumnos que no están matriculados en el curso
+        const alumnosMatriculados = r.matriculados;
+        const alumnosMatriculadosIds = alumnosMatriculados.map(a => a.id);
+
+        this.alumnosDisponibles = r.todos.filter(
+          alumno => !alumnosMatriculadosIds.includes(alumno.id)
+        );
+
+        this.loadingAlumnos = false;
+      },
+      error: (err) => {
+        console.error('Error al cargar alumnos:', err);
+        this.loadingAlumnos = false;
+        this.error = 'Error al cargar la lista de alumnos';
+      }
+    });
+  }
+    //Cerramos y reseteamos los datos de los modales para que no se mezclen datos en distintas operaciones
+   cerrarModales(): void {
+    this.showProfesorModal = false;
+    this.showAlumnoModal = false;
+    this.cursoSeleccionado = null;
+    this.selectedProfesorId = null;
+    this.selectedAlumnoId = null;
+  }
+   asignarProfesor(): void {
+    if (!this.cursoSeleccionado?.id || !this.selectedProfesorId || this.processingAction) {
+      return;
+    }
+
+    this.processingAction = true;
+
+    this.cursoService.assignProfesorToCurso(this.cursoSeleccionado.id, this.selectedProfesorId).subscribe({
+      next: (cursoActualizado) => {
+        // Actualizar el curso en la lista
+        this.loadCursos();
+        const index = this.cursos.findIndex(c => c.id === cursoActualizado.id);
+        if (index !== -1) {
+         this.cursoService.getCursoById(cursoActualizado.id!).subscribe(cursoCompleto => {
+          this.cursos[index] = cursoCompleto;
+        });
+        }
+
+        this.processingAction = false;
+        this.cerrarModales();
+
+        // Mostrar mensaje de éxito
+        this.error = null;
+        setTimeout(() => {
+          alert('Profesor asignado correctamente');
+        }, 800);
+      },
+      error: (err) => {
+        console.error('Error al asignar profesor:', err);
+        this.processingAction = false;
+        this.error = 'Error al asignar el profesor al curso';
+      }
+    });
+  }
+   matricularAlumno(): void {
+    if (!this.cursoSeleccionado?.id || !this.selectedAlumnoId || this.processingAction || !this.hasPlazasDisponibles(this.cursoSeleccionado)) {
+      return;
+    }
+
+    this.processingAction = true;
+
+    this.cursoService.enrollAlumnoInCurso(this.cursoSeleccionado.id, this.selectedAlumnoId).subscribe({
+      next: (cursoActualizado) => {
+        // Actualizar el curso en la lista
+        const index = this.cursos.findIndex(c => c.id === cursoActualizado.id);
+        if (index !== -1) {
+          //cogemos el curso en nuestra lista y lo actualizamos por el que acabamos de insertar el alumnos
+          this.cursos[index] = cursoActualizado;
+        }
+
+        this.processingAction = false;
+        this.cerrarModales();
+
+        // Mostrar mensaje de éxito
+        this.error = null;
+        setTimeout(() => {
+          alert('Alumno matriculado correctamente');
+        }, 100);
+      },
+      error: (err) => {
+        console.error('Error al matricular alumno:', err);
+        this.processingAction = false;
+        this.error = 'Error al matricular al alumno en el curso';
+      }
+    });
+  }
 }

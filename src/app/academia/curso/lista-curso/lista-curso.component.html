@@ -24,6 +24,13 @@
       >
         Buscar por nivel
       </button>
+      <button
+        class="tab-button"
+        [class.active]="activeTab === 'disponibles'"
+        (click)="setActiveTab('disponibles')"
+      >
+        Con plazas disponibles
+      </button>
     </div>
 
     <div class="search-form" *ngIf="activeTab === 'todos'">
@@ -64,6 +71,26 @@
         <button (click)="resetFilters()" class="btn btn-secondary">Limpiar</button>
       </div>
     </div>
+
+    <div class="search-form" *ngIf="activeTab === 'disponibles'">
+      <div class="form-group">
+        <label for="plazasMinimas">Plazas mínimas disponibles</label>
+        <input
+          type="number"
+          id="plazasMinimas"
+          [(ngModel)]="plazasMinimas"
+          class="form-control"
+          placeholder="Ingrese número mínimo de plazas"
+          min="1"
+          max="30"
+        >
+      </div>
+
+      <div class="form-buttons">
+        <button (click)="buscar()" class="btn btn-primary">Buscar</button>
+        <button (click)="resetFilters()" class="btn btn-secondary">Limpiar</button>
+      </div>
+    </div>
   </div>
 
   <div *ngIf="loading" class="loading-container">
@@ -86,9 +113,11 @@
           <tr>
             <th>ID</th>
             <th>Nombre</th>
-            <th>Descripción</th>
             <th>Nivel</th>
             <th>Precio</th>
+            <th>Profesores</th>
+            <th>Alumnos</th>
+            <th>Plazas</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -96,13 +125,34 @@
           <tr *ngFor="let curso of cursos">
             <td>{{ curso.id }}</td>
             <td>{{ curso.nombre }}</td>
-            <td>{{ curso.descripcion || 'N/A' }}</td>
             <td>{{ curso.nivel || 'N/A' }}</td>
             <td>{{ curso.precio ? (curso.precio | currency:'EUR':'symbol':'1.2-2') : 'N/A' }}</td>
+            <td>
+              <span [title]="getFullProfesoresList(curso)">
+                {{ formatProfesores(curso) }}
+              </span>
+            </td>
+            <td>{{ getNumeroAlumnos(curso) }}</td>
+            <td>
+              <div class="plazas-info" [ngClass]="{'no-disponible': !hasPlazasDisponibles(curso)}">
+                {{ getPlazasDisponibles(curso) }} / {{ getMaxAlumnos() }}
+              </div>
+            </td>
             <td class="actions-cell">
-              <button class="btn-icon btn-view" title="Ver detalles" (click)="verCurso(curso.id!)">👁️</button>
-              <button class="btn-icon btn-edit" title="Editar" (click)="editarCurso(curso.id!)">✏️</button>
-              <button class="btn-icon btn-delete" title="Eliminar" (click)="eliminarCurso(curso.id!)">🗑️</button>
+              <div class="btn-group">
+                <button class="btn-icon btn-view" title="Ver detalles" (click)="verCurso(curso.id!)">👁️</button>
+                <button class="btn-icon btn-edit" title="Editar" (click)="editarCurso(curso.id!)">✏️</button>
+                <button class="btn-icon btn-delete" title="Eliminar" (click)="eliminarCurso(curso.id!)">🗑️</button>
+                <button class="btn-icon btn-add-prof" title="Añadir profesor" (click)="abrirModalProfesor(curso)">👨‍🏫</button>
+                <button
+                  class="btn-icon btn-add-student"
+                  title="Añadir alumno"
+                  [disabled]="!hasPlazasDisponibles(curso)"
+                  [ngClass]="{'disabled': !hasPlazasDisponibles(curso)}"
+                  (click)="abrirModalAlumno(curso)">
+                  👨‍🎓
+                </button>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -116,6 +166,98 @@
         [totalElements]="page.totalElements"
         (pageChange)="onPageChange($event)"
       ></app-pagination>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para añadir profesor -->
+<div class="modal" *ngIf="showProfesorModal" [class.show]="showProfesorModal">
+  <div class="modal-backdrop" (click)="cerrarModales()"></div>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Añadir profesor al curso: {{ cursoSeleccionado?.nombre }}</h3>
+        <button type="button" class="close-button" (click)="cerrarModales()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="loadingProfesores" class="modal-loading">
+          <div class="spinner small"></div>
+          <p>Cargando profesores...</p>
+        </div>
+        <div *ngIf="!loadingProfesores">
+          <div *ngIf="profesoresDisponibles.length === 0" class="empty-state">
+            <p>No hay profesores disponibles para añadir a este curso.</p>
+          </div>
+          <div *ngIf="profesoresDisponibles.length > 0">
+            <div class="form-group">
+              <label for="profesorSelect">Seleccione un profesor:</label>
+              <select id="profesorSelect" [(ngModel)]="selectedProfesorId" class="form-control">
+                <option [ngValue]="null">Seleccione un profesor</option>
+                <option *ngFor="let profesor of profesoresDisponibles" [value]="profesor.id">
+                  {{ profesor.nombre }} {{ profesor.apellido }} - {{ profesor.especialidad }}
+                </option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="cerrarModales()">Cancelar</button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          [disabled]="!selectedProfesorId || loadingProfesores || processingAction"
+          (click)="asignarProfesor()">
+          <span *ngIf="!processingAction">Añadir profesor</span>
+          <span *ngIf="processingAction">Procesando...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para añadir alumno -->
+<div class="modal" *ngIf="showAlumnoModal" [class.show]="showAlumnoModal">
+  <div class="modal-backdrop" (click)="cerrarModales()"></div>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Añadir alumno al curso: {{ cursoSeleccionado?.nombre }}</h3>
+        <button type="button" class="close-button" (click)="cerrarModales()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="loadingAlumnos" class="modal-loading">
+          <div class="spinner small"></div>
+          <p>Cargando alumnos...</p>
+        </div>
+        <div *ngIf="!loadingAlumnos">
+          <div *ngIf="alumnosDisponibles.length === 0" class="empty-state">
+            <p>No hay alumnos disponibles para añadir a este curso.</p>
+          </div>
+          <div *ngIf="alumnosDisponibles.length > 0">
+            <div class="form-group">
+              <label for="alumnoSelect">Seleccione un alumno:</label>
+              <select id="alumnoSelect" [(ngModel)]="selectedAlumnoId" class="form-control">
+                <option [ngValue]="null">Seleccione un alumno</option>
+                <option *ngFor="let alumno of alumnosDisponibles" [value]="alumno.id">
+                  {{ alumno.nombre }} {{ alumno.apellido }}
+                </option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="cerrarModales()">Cancelar</button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          [disabled]="!selectedAlumnoId || loadingAlumnos || processingAction || !hasPlazasDisponibles(cursoSeleccionado)"
+          (click)="matricularAlumno()">
+          <span *ngIf="!processingAction">Matricular alumno</span>
+          <span *ngIf="processingAction">Procesando...</span>
+        </button>
+      </div>
     </div>
   </div>
 </div>
