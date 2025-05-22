@@ -4,6 +4,7 @@ import { AlumnoEntity } from '../interfaces/alumno-entity';
 import { Page } from '../interfaces/page';
 import { Observable } from 'rxjs';
 import { Usuario } from '../interfaces/usuario';
+import { CursoEntity } from '../interfaces/curso-entity';
 
 @Injectable({
   providedIn: 'root'
@@ -38,6 +39,16 @@ export class AlumnoService {
       .set('page', '0')
       .set('size', '1');
     return this.http.get<Page<AlumnoEntity>>(`${this.apiUrl}`, { params });
+  }
+
+  getCursosByAlumno(alumnoId: number, page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<CursoEntity>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString())
+      .set('sort', sort)
+      .set('direction', direction);
+
+    return this.http.get<Page<CursoEntity>>(`${this.apiUrl}/${alumnoId}/cursos`, { params });
   }
 
   searchAlumnos(nombre:string, apellido:string, page:number=0, size:number=10, sort:string="apellido", direction:string="asc"): Observable<Page<AlumnoEntity>>{

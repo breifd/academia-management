@@ -64,22 +64,37 @@ export class ListaEntregasComponent implements OnInit{
   }
 
   handleRouteParams(): void{
+    //Escuchamos los parámetros de una ruta
     this.route.params.subscribe(
       params=> {
-        this.profesorId=params['profesorId'] ? +params['profesorId'] : null;
-        this.alumnoId=params['alumnoId'] ? +params['alumnoId'] : null;
-        this.tareaId=params['tareaId'] ? +params['tareaId'] : null;
+        //Si existe tareaID, lo guarda como numero en la propiedad this.tareaId, sino lo iguala a null
+        this.tareaId= params['tareaId'] ? +params['tareaId'] : null;
+        this.route.queryParams.subscribe(
+          queryParams =>{
+            this.profesorId = queryParams['profesorId'] ? +queryParams['profesorId'] : null;
+            this.alumnoId = queryParams['alumnoId'] ? +queryParams['alumnoId'] : null;
 
-        const filtro= params['filtro'];
-        if(filtro=== 'pendientes' && this.profesorId){
-          this.activeTab ='pendientes';
-          this.loadEntregasPendientesCalificacion();
-        } else if(filtro === 'alumno' && this.alumnoId){
-          this.loadEntregasAlumno();
-        } else {
-          this.loadEntregasSegunRol();
-        }
-    });
+            //Si existe tareaID el componente muestra entregas de una tarea concreta
+            if (this.tareaId) {
+              // Mostrar solo entregas de esta tarea
+              this.loadEntregasByTarea();
+            } else {
+              //Sino muestra las entregas segun el rol del Usuario
+              this.loadEntregasSegunRol();
+            }
+          });
+      });
+  }
+
+  loadEntregasByTarea():void{
+
+    this.entregaService.getEntregas(this.currentPage,this.pageSize,this.sortBy,this.sortDirection).subscribe({
+      next: (page)=>{
+        //Filtramos las entregas que tengan como tarea la que presente el iD seleccionado
+        this.entregas=page.content.filter(e=> e.tarea?.id === this.tareaId);
+        this.loading=false;
+      }
+    })
   }
 
   loadEntregasSegunRol():void{
