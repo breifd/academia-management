@@ -253,5 +253,18 @@ export class ProfesoresComponent implements OnInit {
     this.router.navigate(['/profesores/nuevo'], { queryParams });
 
   }
-    // Método para}
+
+   verTareasProfesor(profesorId: number): void {
+    this.router.navigate(['/tareas'], {
+      queryParams: { profesorId: profesorId, filtro: 'profesor' }
+    });
+  }
+
+  // Ver entregas pendientes de un profesor
+  verEntregasProfesor(profesorId: number): void {
+    this.router.navigate(['/entregas'], {
+      queryParams: { profesorId: profesorId, filtro: 'pendientes' }
+    });
+  }
+
 }

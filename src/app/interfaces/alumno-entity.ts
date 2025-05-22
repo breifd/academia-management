@@ -1,4 +1,6 @@
 import { CursoEntity } from "./curso-entity";
+import { EntregaEntity } from "./Entregas";
+import { TareaEntity } from "./tarea-entity";
 
 export interface AlumnoEntity {
   id?: number;
@@ -11,4 +13,13 @@ export interface AlumnoEntity {
 
   cursos?: CursoEntity[];
   numeroCursos?: number;
+
+  tareasAsignadas?: TareaEntity[]; // Tareas específicamente asignadas a este alumno
+  entregas?: EntregaEntity[]; // Entregas realizadas por el alumno
+
+  // Propiedades calculadas útiles para la UI
+  totalTareas?: number;
+  tareasEntregadas?: number;
+  tareasCalificadas?: number;
+  promedioNotas?: number;
 }

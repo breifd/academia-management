@@ -1,8 +1,15 @@
 <div class="tareas-container">
   <div class="page-header">
     <div class="header-actions">
-      <h1>Listado de Tareas</h1>
-      <button class="btn btn-success" (click)="nuevaTarea()">
+      <h1>
+        <span *ngIf="esProfesor()">Mis Tareas Creadas</span>
+        <span *ngIf="esAlumno()">Mis Tareas Asignadas</span>
+        <span *ngIf="usuario?.rol === rolUsuario.ADMIN">Todas las Tareas</span>
+      </h1>
+      <button
+        *ngIf="puedeCrearTarea()"
+        class="btn btn-success"
+        (click)="nuevaTarea()">
         <i class="fa fa-plus"></i> Nueva Tarea
       </button>
     </div>
@@ -13,23 +20,26 @@
       <button
         class="tab-button"
         [class.active]="activeTab === 'todos'"
-        (click)="setActiveTab('todos')"
-      >
-        Todas las tareas
+        (click)="setActiveTab('todos')">
+        <span *ngIf="esProfesor()">Todas mis tareas</span>
+        <span *ngIf="esAlumno()">Todas mis asignadas</span>
+        <span *ngIf="usuario?.rol === rolUsuario.ADMIN">Todas las tareas</span>
       </button>
       <button
         class="tab-button"
         [class.active]="activeTab === 'pendientes'"
-        (click)="setActiveTab('pendientes')"
-      >
-        Pendientes
+        (click)="setActiveTab('pendientes')">
+        <span *ngIf="esProfesor()">Activas</span>
+        <span *ngIf="esAlumno()">Por entregar</span>
+        <span *ngIf="usuario?.rol === rolUsuario.ADMIN">Pendientes</span>
       </button>
       <button
         class="tab-button"
         [class.active]="activeTab === 'vencidas'"
-        (click)="setActiveTab('vencidas')"
-      >
-        Vencidas
+        (click)="setActiveTab('vencidas')">
+        <span *ngIf="esProfesor()">Vencidas</span>
+        <span *ngIf="esAlumno()">Vencidas</span>
+        <span *ngIf="usuario?.rol === rolUsuario.ADMIN">Vencidas</span>
       </button>
     </div>
 
@@ -41,8 +51,7 @@
           id="nombreFilter"
           [(ngModel)]="nombreFilter"
           class="form-control"
-          placeholder="Nombre de la tarea"
-        >
+          placeholder="Nombre de la tarea">
       </div>
 
       <div class="form-buttons">
@@ -63,7 +72,9 @@
 
   <div *ngIf="!loading && !error">
     <div *ngIf="tareas.length === 0" class="empty-state">
-      <p>No se encontraron tareas que coincidan con los criterios de búsqueda.</p>
+      <p *ngIf="esProfesor()">No tienes tareas creadas.</p>
+      <p *ngIf="esAlumno()">No tienes tareas asignadas.</p>
+      <p *ngIf="usuario?.rol === rolUsuario.ADMIN">No se encontraron tareas en el sistema.</p>
     </div>
 
     <div *ngIf="tareas.length > 0" class="table-responsive">
@@ -72,11 +83,13 @@
           <tr>
             <th>ID</th>
             <th>Nombre</th>
-            <th>Descripción</th>
+            <th>Curso</th>
             <th>Fecha Publicación</th>
             <th>Fecha Límite</th>
+            <th *ngIf="esProfesor()">Entregas</th>
+            <th *ngIf="esAlumno()">Mi Estado</th>
+            <th *ngIf="usuario?.rol === rolUsuario.ADMIN">Profesor</th>
             <th>Documento</th>
-            <th>Nota</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -84,21 +97,60 @@
           <tr *ngFor="let tarea of tareas" [class.tarea-vencida]="isTareaVencida(tarea)">
             <td>{{ tarea.id }}</td>
             <td>{{ tarea.nombre }}</td>
-            <td>{{ tarea.descripcion || 'N/A' }}</td>
+            <td>{{ tarea.curso?.nombre || 'N/A' }}</td>
             <td>{{ formatFecha(tarea.fechaPublicacion) }}</td>
             <td>{{ formatFecha(tarea.fechaLimite) }}</td>
+
+            <!-- Columna para profesores: Ver entregas -->
+            <td *ngIf="esProfesor()" class="entregas-column">
+              <button
+                class="btn btn-sm btn-info"
+                (click)="verEntregas(tarea.id!)"
+                title="Ver entregas de la tarea">
+                📋 Ver Entregas
+              </button>
+            </td>
+
+            <!-- Columna para alumnos: Estado de entrega -->
+            <td *ngIf="esAlumno()" class="estado-entrega">
+              <span class="badge badge-warning">Por implementar</span>
+              <!-- TODO: Implementar lógica de estado de entrega del alumno -->
+            </td>
+
+            <!-- Columna para admin: Mostrar profesor -->
+            <td *ngIf="usuario?.rol === rolUsuario.ADMIN">
+              {{ tarea.profesor?.nombre }} {{ tarea.profesor?.apellido }}
+            </td>
+
             <td>
               <div *ngIf="tieneDocumento(tarea)">
-                <span class="badge badge-success">Documento cargado</span>
+                <span class="badge badge-success">Documento disponible</span>
                 <button class="btn-icon btn-download" title="Descargar documento" (click)="descargarDocumento(tarea.id!)">📥</button>
               </div>
               <span *ngIf="!tieneDocumento(tarea)" class="badge badge-warning">Sin documento</span>
             </td>
-            <td>{{ formatNota(tarea) }}</td>
+
             <td class="actions-cell">
               <button class="btn-icon btn-view" title="Ver detalles" (click)="verTarea(tarea.id!)">👁️</button>
-              <button class="btn-icon btn-edit" title="Editar" (click)="editarTarea(tarea.id!)">✏️</button>
-              <button class="btn-icon btn-delete" title="Eliminar" (click)="eliminarTarea(tarea.id!)">🗑️</button>
+
+              <!-- Botones para profesores y admins -->
+              <button
+                *ngIf="puedeEditarTarea()"
+                class="btn-icon btn-edit"
+                title="Editar"
+                (click)="editarTarea(tarea.id!)">✏️</button>
+              <button
+                *ngIf="puedeEditarTarea()"
+                class="btn-icon btn-delete"
+                title="Eliminar"
+                (click)="eliminarTarea(tarea.id!)">🗑️</button>
+
+              <!-- Botón para alumnos: Hacer entrega -->
+              <button
+                *ngIf="esAlumno()"
+                class="btn-icon btn-upload"
+                title="Hacer entrega"
+                (click)="hacerEntrega(tarea.id!)">📤</button>
             </td>
           </tr>
         </tbody>
@@ -110,8 +162,56 @@
         [totalPages]="page.totalPages"
         [pageSize]="pageSize"
         [totalElements]="page.totalElements"
-        (pageChange)="onPageChange($event)"
-      ></app-pagination>
+        (pageChange)="onPageChange($event)">
+      </app-pagination>
     </div>
   </div>
 </div>
+
+<style>
+.tarea-vencida {
+  background-color: #ffebee !important;
+}
+
+.entregas-column {
+  text-align: center;
+}
+
+.estado-entrega {
+  text-align: center;
+}
+
+.badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.badge-success {
+  background-color: #4caf50;
+  color: white;
+}
+
+.badge-warning {
+  background-color: #ff9800;
+  color: white;
+}
+
+.badge-danger {
+  background-color: #f44336;
+  color: white;
+}
+
+.btn-sm {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.btn-info {
+  background-color: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+}
+</style>

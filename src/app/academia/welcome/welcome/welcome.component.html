@@ -41,11 +41,12 @@
         </div>
       </div>
     </div>
+
     <div class="dashboard-card">
       <div class="card-icon">📝</div>
       <div class="card-content">
         <h3>Tareas</h3>
-        <p>Gestiona las tareas y evaluaciones del curso.</p>
+        <p>Gestiona las tareas y evaluaciones de los cursos.</p>
         <div class="card-actions">
           <a routerLink="/tareas" class="btn btn-primary">Ver Tareas</a>
         </div>
@@ -100,6 +101,11 @@
     <div class="stat-card">
       <div class="stat-value">{{ estadisticas.totalCursos }}</div>
       <div class="stat-label">Cursos</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-value">{{ estadisticas.totalTareas }}</div>
+      <div class="stat-label">Tareas</div>
     </div>
 
     <div class="stat-card">

@@ -114,11 +114,14 @@
             <td>{{ profesor.anhosExperiencia || 'N/A' }}</td>
             <td>{{ profesor.email || 'N/A' }}</td>
             <td>{{ profesor.telefono || 'N/A' }}</td>
-            <td class="actions-cell">
+           <td class="actions-cell">
               <button class="btn-icon btn-view" title="Ver detalles" (click)="verProfesor(profesor.id!)">👁️</button>
               <button class="btn-icon btn-edit" title="Editar" (click)="editarProfesor(profesor.id!)">✏️</button>
               <button class="btn-icon btn-delete" title="Eliminar" (click)="eliminarProfesor(profesor.id!)">🗑️</button>
-            </td>
+
+              <button class="btn-icon btn-tasks" title="Ver tareas del profesor" (click)="verTareasProfesor(profesor.id!)">📝</button>
+              <button class="btn-icon btn-submissions" title="Ver entregas pendientes" (click)="verEntregasProfesor(profesor.id!)">📋</button>
+           </td>
           </tr>
         </tbody>
       </table>

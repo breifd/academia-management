@@ -1,9 +1,16 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TareaService } from '../../../services/tarea.service';
-import { TareaEntity } from '../../../interfaces/tarea-entity';
+import { CursoService } from '../../../services/curso.service';
+import { AlumnoService } from '../../../services/alumno.service';
+import { TareaEntity, TareaDTO } from '../../../interfaces/tarea-entity';
+import { CursoEntity } from '../../../interfaces/curso-entity';
+import { AlumnoEntity } from '../../../interfaces/alumno-entity';
+import { Usuario } from '../../../interfaces/usuario';
+import { RolUsuario } from '../../../enum/rol-usuario';
+import { AuthService } from '../../../services/auth.service';
 
 export type FormMode = 'view' | 'edit' | 'crear';
 
@@ -18,6 +25,8 @@ export class FormTareasComponent implements OnInit {
   tareaForm: FormGroup;
   mode: FormMode = 'crear';
   tareaID: number | null = null;
+  usuario: Usuario | null = null;
+
   loading = false;
   error: string | null = null;
   successMessage: string | null = null;
@@ -27,36 +36,103 @@ export class FormTareasComponent implements OnInit {
   archivoSeleccionado: File | null = null;
   nombreArchivoActual: string | null = null;
 
-  constructor( private fb: FormBuilder, private tareaService: TareaService, private router: Router, private route: ActivatedRoute
+  // Datos para formulario
+  cursos: CursoEntity[] = [];
+  alumnos: AlumnoEntity[] = [];
+  alumnosDelCurso: AlumnoEntity[] = [];
+
+  // Estados y roles
+  rolUsuario = RolUsuario;
+
+  constructor(
+    private fb: FormBuilder,
+    private tareaService: TareaService,
+    private cursoService: CursoService,
+    private alumnoService: AlumnoService,
+    private router: Router,
+    private route: ActivatedRoute,
+    private authService: AuthService
   ) {
-    this.tareaForm = this.createForm(); // Inicializamos el formulario
+    this.tareaForm = this.createForm();
   }
 
   ngOnInit(): void {
+    this.authService.currentUser.subscribe(user => {
+      this.usuario = user;
+      if (this.usuario) {
+        this.handleRouteParams();
+        this.loadInitialData();
+      }
+    });
+  }
+
+  handleRouteParams(): void {
     this.route.params.subscribe(params => {
       const id = params['id'];
 
       this.route.queryParams.subscribe(queryParams => {
-        this.mode = queryParams['modo'] as FormMode; // establecemos el modo desde los parámetros de la ruta
+        this.mode = queryParams['modo'] as FormMode;
         if (id && (this.mode === 'view' || this.mode === 'edit')) {
           this.tareaID = +id;
           this.loadTarea(this.tareaID);
         } else if (this.mode === 'crear') {
           // Si es crear, inicializar con la fecha de hoy
           this.tareaForm.patchValue({
-            fechaPublicacion: this.today
+            fechaPublicacion: this.today,
+            paraTodosLosAlumnos: true
           });
         }
         this.tipoMode();
       });
     });
-    this.tareaForm.get('fechaPublicacion')?.valueChanges.subscribe(() => {
-      this.tareaForm.updateValueAndValidity();
-    });
+  }
 
-    this.tareaForm.get('fechaLimite')?.valueChanges.subscribe(() => {
-      this.tareaForm.updateValueAndValidity();
+  loadInitialData(): void {
+    this.loadCursos();
+    this.loadAlumnos();
+  }
+
+  loadCursos(): void {
+    this.cursoService.getCursosLista().subscribe({
+      next: (cursos) => {
+        // Si es profesor, filtrar solo los cursos donde imparte
+        if (this.esProfesor()) {
+          this.cursos = cursos.filter(curso =>
+            curso.profesores?.some(p => p.id === this.usuario?.profesorId)
+          );
+        } else {
+          this.cursos = cursos;
+        }
+      },
+      error: (err) => {
+        console.error('Error al cargar cursos:', err);
+      }
     });
+  }
+
+  loadAlumnos(): void {
+    this.alumnoService.getAlumnos(0, 1000).subscribe({
+      next: (page) => {
+        this.alumnos = page.content;
+      },
+      error: (err) => {
+        console.error('Error al cargar alumnos:', err);
+      }
+    });
+  }
+
+  onCursoChange(): void {
+    const cursoId = this.tareaForm.get('cursoId')?.value;
+    if (cursoId) {
+      const cursoSeleccionado = this.cursos.find(c => c.id === +cursoId);
+      if (cursoSeleccionado && cursoSeleccionado.alumnos) {
+        this.alumnosDelCurso = cursoSeleccionado.alumnos;
+      } else {
+        this.alumnosDelCurso = [];
+      }
+    } else {
+      this.alumnosDelCurso = [];
+    }
   }
 
   createForm(): FormGroup {
@@ -65,22 +141,10 @@ export class FormTareasComponent implements OnInit {
       descripcion: ['', [Validators.maxLength(500)]],
       fechaPublicacion: [null],
       fechaLimite: [null],
-      nota: [null, [Validators.min(0), Validators.max(10)]]
-      // No incluimos el documento en el formulario, se maneja por separado
+      cursoId: [null, [Validators.required]],
+      paraTodosLosAlumnos: [true],
+      alumnosIds: [[]]
     });
-  }
-
-  fechasValidator(): void {
-    const fechaPublicacion = this.tareaForm.get('fechaPublicacion')?.value;
-    const fechaLimite = this.tareaForm.get('fechaLimite')?.value;
-
-    if (fechaPublicacion && fechaLimite && new Date(fechaPublicacion) > new Date(fechaLimite)) {
-     this.error = 'La fecha límite no puede ser anterior a la fecha de publicación';
-    }else{
-       if (this.error && this.error.includes('fecha límite')) {
-        this.error = null;
-      }
-    }
   }
 
   loadTarea(id: number): void {
@@ -100,8 +164,15 @@ export class FormTareasComponent implements OnInit {
           descripcion: tarea.descripcion,
           fechaPublicacion: tarea.fechaPublicacion,
           fechaLimite: tarea.fechaLimite,
-          nota: tarea.nota
+          cursoId: tarea.curso?.id,
+          paraTodosLosAlumnos: tarea.paraTodosLosAlumnos,
+          alumnosIds: tarea.alumnosAsignados?.map(a => a.id) || []
         });
+
+        // Cargar alumnos del curso
+        if (tarea.curso?.id) {
+          this.onCursoChange();
+        }
 
         // Guardamos el nombre del archivo actual
         this.nombreArchivoActual = tarea.nombreDocumento || null;
@@ -128,8 +199,6 @@ export class FormTareasComponent implements OnInit {
   // Método para manejar el evento de selección de archivo
   onFileSelected(event: Event): void {
     const element = event.target as HTMLInputElement;
-    // Verificamos si hay un archivo seleccionado
-    // y lo asignamos a la propiedad archivoSeleccionado
     if (element.files && element.files.length > 0) {
       this.archivoSeleccionado = element.files[0];
     } else {
@@ -185,6 +254,7 @@ export class FormTareasComponent implements OnInit {
 
   guardar(): void {
     if (this.tareaForm.invalid || this.mode === 'view') {
+      this.tareaForm.markAllAsTouched();
       return;
     }
 
@@ -192,7 +262,7 @@ export class FormTareasComponent implements OnInit {
     const fechaPublicacion = this.tareaForm.get('fechaPublicacion')?.value;
     const fechaLimite = this.tareaForm.get('fechaLimite')?.value;
 
-    if(fechaPublicacion && fechaLimite){
+    if (fechaPublicacion && fechaLimite) {
       const fechaPublicacionDate = new Date(fechaPublicacion);
       const fechaLimiteDate = new Date(fechaLimite);
 
@@ -201,12 +271,19 @@ export class FormTareasComponent implements OnInit {
         return;
       }
     }
+
     this.loading = true;
     this.error = null;
     this.successMessage = null;
 
-    const tareaData: TareaEntity = {
-      ...this.tareaForm.value
+    const tareaData: TareaDTO = {
+      nombre: this.tareaForm.get('nombre')?.value,
+      descripcion: this.tareaForm.get('descripcion')?.value,
+      fechaPublicacion: this.tareaForm.get('fechaPublicacion')?.value,
+      fechaLimite: this.tareaForm.get('fechaLimite')?.value,
+      cursoId: +this.tareaForm.get('cursoId')?.value,
+      paraTodosLosAlumnos: this.tareaForm.get('paraTodosLosAlumnos')?.value,
+      alumnosIds: this.tareaForm.get('alumnosIds')?.value || []
     };
 
     if (this.mode === 'edit' && this.tareaID) {
@@ -257,5 +334,25 @@ export class FormTareasComponent implements OnInit {
 
   getModoTexto(): string {
     return this.mode === 'view' ? 'Ver' : this.mode === 'edit' ? 'Editar' : 'Crear';
+  }
+
+  // Métodos de utilidad
+  esProfesor(): boolean {
+    return this.usuario?.rol === RolUsuario.PROFESOR;
+  }
+
+  esAlumno(): boolean {
+    return this.usuario?.rol === RolUsuario.ALUMNO;
+  }
+
+  esAdmin(): boolean {
+    return this.usuario?.rol === RolUsuario.ADMIN;
+  }
+
+  onParaTodosChange(): void {
+    const paraTodos = this.tareaForm.get('paraTodosLosAlumnos')?.value;
+    if (paraTodos) {
+      this.tareaForm.get('alumnosIds')?.setValue([]);
+    }
   }
 }

@@ -2,15 +2,17 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs/internal/Observable';
 import { Page } from '../interfaces/page';
-import { TareaEntity } from '../interfaces/tarea-entity';
+import { TareaEntity, TareaDTO } from '../interfaces/tarea-entity';
 
 @Injectable({
   providedIn: 'root'
 })
 export class TareaService {
   private apiUrl = 'http://localhost:8080/api/tareas';
-  constructor( private http :  HttpClient) { }
 
+  constructor(private http: HttpClient) { }
+
+  // Métodos básicos CRUD
   getTareas(page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<TareaEntity>> {
     let params = new HttpParams()
       .set('page', page.toString())
@@ -21,17 +23,14 @@ export class TareaService {
     return this.http.get<Page<TareaEntity>>(this.apiUrl, { params });
   }
 
-  // Obtener una tarea por ID
   getTareaById(id: number): Observable<TareaEntity> {
     return this.http.get<TareaEntity>(`${this.apiUrl}/${id}`);
   }
 
-  // Obtener todas las tareas (lista completa sin paginación)
   getTareasLista(): Observable<TareaEntity[]> {
     return this.http.get<TareaEntity[]>(`${this.apiUrl}/listar`);
   }
 
-  // Buscar tareas por nombre
   searchTareas(nombre: string = '', page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<TareaEntity>> {
     let params = new HttpParams()
       .set('nombre', nombre)
@@ -43,7 +42,6 @@ export class TareaService {
     return this.http.get<Page<TareaEntity>>(`${this.apiUrl}/buscar`, { params });
   }
 
-  // Obtener tareas pendientes (fecha límite posterior a hoy)
   getTareasPendientes(page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<TareaEntity>> {
     let params = new HttpParams()
       .set('page', page.toString())
@@ -54,7 +52,6 @@ export class TareaService {
     return this.http.get<Page<TareaEntity>>(`${this.apiUrl}/pendientes`, { params });
   }
 
-  // Obtener tareas vencidas (fecha límite anterior a hoy)
   getTareasVencidas(page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<TareaEntity>> {
     let params = new HttpParams()
       .set('page', page.toString())
@@ -65,13 +62,13 @@ export class TareaService {
     return this.http.get<Page<TareaEntity>>(`${this.apiUrl}/vencidas`, { params });
   }
 
-  // Crear una nueva tarea
-  createTarea(tarea: TareaEntity): Observable<TareaEntity> {
+  // Crear tarea con DTO
+  createTarea(tarea: TareaDTO): Observable<TareaEntity> {
     return this.http.post<TareaEntity>(this.apiUrl, tarea);
   }
 
-  // Actualizar una tarea existente
-  updateTarea(id: number, tarea: TareaEntity): Observable<TareaEntity> {
+  // Actualizar tarea con DTO
+  updateTarea(id: number, tarea: TareaDTO): Observable<TareaEntity> {
     return this.http.put<TareaEntity>(`${this.apiUrl}/${id}`, tarea);
   }
 
@@ -94,11 +91,51 @@ export class TareaService {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 
+  // Métodos específicos por rol
+
+  // Obtener tareas de un profesor
+  getTareasByProfesor(profesorId: number, page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<TareaEntity>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString())
+      .set('sort', sort)
+      .set('direction', direction);
+
+    return this.http.get<Page<TareaEntity>>(`${this.apiUrl}/profesor/${profesorId}`, { params });
+  }
+
+  // Obtener tareas de un curso
+  getTareasByCurso(cursoId: number, page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<TareaEntity>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString())
+      .set('sort', sort)
+      .set('direction', direction);
+
+    return this.http.get<Page<TareaEntity>>(`${this.apiUrl}/curso/${cursoId}`, { params });
+  }
+
+  // Obtener tareas asignadas a un alumno
+  getTareasByAlumno(alumnoId: number, page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<TareaEntity>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString())
+      .set('sort', sort)
+      .set('direction', direction);
+
+    return this.http.get<Page<TareaEntity>>(`${this.apiUrl}/alumno/${alumnoId}`, { params });
+  }
+
+  // Obtener tareas de un curso para un alumno específico
+  getTareasByCursoForAlumno(cursoId: number, alumnoId: number): Observable<TareaEntity[]> {
+    return this.http.get<TareaEntity[]>(`${this.apiUrl}/curso/${cursoId}/alumno/${alumnoId}`);
+  }
+
+  // Métodos de utilidad
   tieneDocumento(tarea: TareaEntity): boolean {
     return tarea.nombreDocumento !== undefined && tarea.nombreDocumento !== null && tarea.nombreDocumento !== '';
   }
 
-  // Formatear nota para mostrar
   formatNota(tarea: TareaEntity): string {
     const tieneDocumento = this.tieneDocumento(tarea);
 
@@ -107,12 +144,34 @@ export class TareaService {
       return 'No presentado';
     }
 
-    // Si hay nota, mostrarla formateada a 1 decimal
-    if (tarea.nota !== null && tarea.nota !== undefined) {
-      return tarea.nota.toFixed(1);
-    }
-
     return 'Pendiente';
   }
-}
 
+  // Verificar si una tarea está vencida
+  isTareaVencida(tarea: TareaEntity): boolean {
+    if (!tarea.fechaLimite) {
+      return false;
+    }
+    try {
+      const fechaLimite = new Date(tarea.fechaLimite);
+      const ahora = new Date();
+      return fechaLimite < ahora;
+    } catch (error) {
+      console.error('Error al procesar la fecha:', error);
+      return false;
+    }
+  }
+
+  // Obtener el estado de una tarea para un alumno
+  getEstadoTarea(tarea: TareaEntity): string {
+    if (this.isTareaVencida(tarea)) {
+      return 'Vencida';
+    }
+
+    if (tarea.fechaPublicacion && new Date(tarea.fechaPublicacion) > new Date()) {
+      return 'Programada';
+    }
+
+    return 'Activa';
+  }
+}

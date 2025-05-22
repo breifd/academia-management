@@ -8,6 +8,7 @@ import { TareaService } from '../../../services/tarea.service';
 import { CursoService } from '../../../services/curso.service';
 import { ProfesorService } from '../../../services/profesor.service';
 import { AlumnoService } from '../../../services/alumno.service';
+import { EntregaService } from '../../../services/entrega.service';
 
 
 interface EstadisticasData {
@@ -15,6 +16,7 @@ interface EstadisticasData {
   totalAlumnos: number;
   totalCursos: number;
   totalEspecialidades: number;
+  totalTareas: number;
   loading: boolean;
   error: string | null;
 }
@@ -34,9 +36,10 @@ export class WelcomeComponent implements OnInit, OnDestroy {
     totalProfesores: 0,
     totalAlumnos: 0,
     totalCursos: 0,
+    totalTareas: 0,
     totalEspecialidades: 0,
     loading: true,
-    error: null
+    error: null as string | null
   };
 
   usuario: Usuario | null = null;
@@ -86,6 +89,7 @@ export class WelcomeComponent implements OnInit, OnDestroy {
       profesores: this.profesorService.getProfesoresLista(),
       alumnos: this.alumnoService.getAlumnos(0, 1000), // Obtener una página grande para contar todos
       cursos: this.cursoService.getCursosLista(),
+      tareas: this.tareaService.getTareasLista(),
       especialidades: this.profesorService.getEspecialidades()
     }).subscribe({
       next: (resultados) => {
@@ -93,6 +97,7 @@ export class WelcomeComponent implements OnInit, OnDestroy {
           totalProfesores: resultados.profesores.length,
           totalAlumnos: resultados.alumnos.totalElements, // Usar totalElements de la paginación
           totalCursos: resultados.cursos.length,
+          totalTareas:resultados.tareas.length,
           totalEspecialidades: resultados.especialidades.length,
           loading: false,
           error: null
@@ -107,6 +112,7 @@ export class WelcomeComponent implements OnInit, OnDestroy {
         this.estadisticas.totalProfesores = 0;
         this.estadisticas.totalAlumnos = 0;
         this.estadisticas.totalCursos = 0;
+        this.estadisticas.totalTareas = 0;
         this.estadisticas.totalEspecialidades = 0;
       }
     });

@@ -78,7 +78,9 @@
               <button class="btn-icon btn-view" title="Ver detalles" (click)="verAlumno(alumno.id!)">👁️</button>
               <button class="btn-icon btn-edit" title="Editar" (click)="editarAlumno(alumno.id!)">✏️</button>
               <button class="btn-icon btn-delete" title="Eliminar" (click)="eliminarAlumno(alumno.id!)">🗑️</button>
-              <button class="btn-icon btn-tasks" title="Ver tareas" (click)="verTareas()">📝</button>
+              <!-- 🚀 NUEVOS BOTONES -->
+              <button class="btn-icon btn-tasks" title="Ver tareas del alumno" (click)="verTareasAlumno(alumno.id!)">📝</button>
+              <button class="btn-icon btn-submissions" title="Ver entregas del alumno" (click)="verEntregasAlumno(alumno.id!)">📋</button>
             </td>
           </tr>
         </tbody>

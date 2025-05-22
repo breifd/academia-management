@@ -1,11 +1,29 @@
+import { AlumnoEntity } from "./alumno-entity";
+import { CursoEntity } from "./curso-entity";
+import { ProfesorEntity } from "./profesor-entity";
+
 export interface TareaEntity {
     id?: number;
     nombre: string;
     descripcion?: string;
     fechaPublicacion?: string;
     fechaLimite?: string;
-    documento?: any; // Este campo no se usará directamente en formularios
+    documento?: any;
     nombreDocumento?: string;
     tipoDocumento?: string;
-    nota?: number | null; // null representa "No presentado"
+    curso?: CursoEntity;
+    profesor?: ProfesorEntity;
+    paraTodosLosAlumnos?: boolean;
+    alumnosAsignados?: AlumnoEntity[]
+}
+
+export interface TareaDTO{
+    id?: number;
+    nombre: string;
+    descripcion?: string;
+    fechaPublicacion?: string;
+    fechaLimite?: string;
+    cursoId: number;
+    paraTodosLosAlumnos?: boolean;
+    alumnosIds?: number[];
 }

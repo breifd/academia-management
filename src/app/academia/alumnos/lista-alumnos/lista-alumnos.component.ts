@@ -183,4 +183,17 @@ private eliminarSoloAlumno(id: number): void {
   verTareas(): void{
     this.router.navigate(['/tareas']); // Navega a la vista de tareas
   }
+
+   verTareasAlumno(alumnoId: number): void {
+    this.router.navigate(['/tareas'], {
+      queryParams: { alumnoId: alumnoId, filtro: 'alumno' }
+    });
+  }
+
+  // Ver entregas de un alumno
+  verEntregasAlumno(alumnoId: number): void {
+    this.router.navigate(['/entregas'], {
+      queryParams: { alumnoId: alumnoId, filtro: 'alumno' }
+    });
+  }
 }
