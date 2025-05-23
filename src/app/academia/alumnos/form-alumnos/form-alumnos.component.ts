@@ -2,13 +2,13 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { AlumnoEntity } from '../../../interfaces/alumno-entity';
-import { Usuario } from '../../../interfaces/usuario';
+
 import { AlumnoService } from '../../../services/alumno.service';
 import { UsuarioService } from '../../../services/usuario.service';
-import { RolUsuario } from '../../../enum/rol-usuario';
-import { UsuarioDTO } from '../../../interfaces/usuarioDTO';
+
 import { debounceTime, distinctUntilChanged, of, Subject, switchMap, takeUntil } from 'rxjs';
+import { LoginResponse, RolUsuario, UsuarioCreateDTO, UsuarioDTO, UsuarioResponseDTO } from '../../../interfaces/usuario';
+import { AlumnoResponseDTO } from '../../../interfaces/alumno-entity';
 
 export type FormMode = 'view' | 'edit' | 'crear';
 
@@ -24,7 +24,7 @@ export class FormAlumnosComponent implements OnInit {
   alumnoForm: FormGroup;
   usuarioForm: FormGroup;
   crearUsuario: boolean = true; // Siempre true, obligatorio
-  usuarioExistente: Usuario | null = null;
+  usuarioExistente: UsuarioResponseDTO | null = null;
   mode: FormMode = "crear";
   alumnoID: number | null = null;
   loading = false;
@@ -277,13 +277,13 @@ export class FormAlumnosComponent implements OnInit {
     this.error = null;
     this.successMessage = null;
 
-    const alumnoData: AlumnoEntity = {
+    const alumnoData: AlumnoResponseDTO = {
       ...this.alumnoForm.value
     };
 
     // Siempre crear con usuario en modo crear
     if (this.mode === 'crear') {
-      const usuarioData: Usuario = {
+      const usuarioData: UsuarioCreateDTO = {
         username: this.usuarioForm.get('username')?.value,
         password: this.usuarioForm.get('password')?.value,
         nombre: this.usuarioForm.get('usarMismoNombre')?.value ? alumnoData.nombre : '',
@@ -291,7 +291,7 @@ export class FormAlumnosComponent implements OnInit {
         rol: RolUsuario.ALUMNO
       };
 
-      this.alumnoService.createAlumnoWithUser(alumnoData, usuarioData).subscribe({
+      this.alumnoService.createAlumnoWithUser(alumnoData).subscribe({
         next: () => {
           this.successMessage = 'Alumno creado correctamente';
           this.loading = false;
@@ -335,7 +335,7 @@ export class FormAlumnosComponent implements OnInit {
         this.alumnoService.updateAlumno(this.alumnoID, alumnoData).subscribe({
           next: () => {
             // Luego crear el usuario
-            const usuarioDTO: UsuarioDTO = {
+            const usuarioDTO: UsuarioCreateDTO = {
               username: this.usuarioForm.get('username')?.value || '',
               password: this.usuarioForm.get('password')?.value || '',
               nombre: this.usuarioForm.get('usarMismoNombre')?.value ? alumnoData.nombre : (this.usuarioForm.get('nombre')?.value || ''),

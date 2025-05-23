@@ -5,12 +5,12 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { TareaService } from '../../../services/tarea.service';
 import { CursoService } from '../../../services/curso.service';
 import { AlumnoService } from '../../../services/alumno.service';
-import { TareaEntity, TareaDTO } from '../../../interfaces/tarea-entity';
-import { CursoEntity } from '../../../interfaces/curso-entity';
-import { AlumnoEntity } from '../../../interfaces/alumno-entity';
-import { Usuario } from '../../../interfaces/usuario';
-import { RolUsuario } from '../../../enum/rol-usuario';
+
 import { AuthService } from '../../../services/auth.service';
+import { LoginResponse, RolUsuario } from '../../../interfaces/usuario';
+import { AlumnoResponseDTO, AlumnoSimpleDTO } from '../../../interfaces/alumno-entity';
+import { CursoResponseDTO, CursoSimpleDTO } from '../../../interfaces/curso-entity';
+import { TareaDTO } from '../../../interfaces/tarea-entity';
 
 export type FormMode = 'view' | 'edit' | 'crear';
 
@@ -25,7 +25,7 @@ export class FormTareasComponent implements OnInit {
   tareaForm: FormGroup;
   mode: FormMode = 'crear';
   tareaID: number | null = null;
-  usuario: Usuario | null = null;
+  usuario: LoginResponse | null = null;
 
   loading = false;
   error: string | null = null;
@@ -37,9 +37,9 @@ export class FormTareasComponent implements OnInit {
   nombreArchivoActual: string | null = null;
 
   // Datos para formulario
-  cursos: CursoEntity[] = [];
-  alumnos: AlumnoEntity[] = [];
-  alumnosDelCurso: AlumnoEntity[] = [];
+  cursos: CursoResponseDTO[] = [];
+  alumnos: AlumnoResponseDTO[] = [];
+  alumnosDelCurso: AlumnoSimpleDTO[] = [];
 
   // Estados y roles
   rolUsuario = RolUsuario;
@@ -92,23 +92,28 @@ export class FormTareasComponent implements OnInit {
     this.loadAlumnos();
   }
 
-  loadCursos(): void {
-    this.cursoService.getCursosLista().subscribe({
-      next: (cursos) => {
-        // Si es profesor, filtrar solo los cursos donde imparte
-        if (this.esProfesor()) {
-          this.cursos = cursos.filter(curso =>
-            curso.profesores?.some(p => p.id === this.usuario?.profesorId)
-          );
-        } else {
-          this.cursos = cursos;
-        }
-      },
-      error: (err) => {
-        console.error('Error al cargar cursos:', err);
+ loadCursos(): void {
+  this.error = null;
+  // Pedimos la lista completa de cursos como DTOs
+  this.cursoService.getCursos(0, 1000, 'id', 'asc').subscribe({
+    next: page => {
+      // page.content es CursoResponseDTO[]
+      if (this.esProfesor() && this.usuario?.profesorId != null) {
+        // Filtramos solo los cursos donde imparte
+        this.cursos = page.content.filter(c =>
+          c.profesores?.some(p => p.id === this.usuario!.profesorId)
+        );
+      } else {
+        // Admin o alumno, tomamos todo
+        this.cursos = page.content;
       }
-    });
-  }
+    },
+    error: err => {
+      console.error('Error al cargar cursos:', err);
+      this.error = 'No se pudieron cargar los cursos';
+    }
+  });
+}
 
   loadAlumnos(): void {
     this.alumnoService.getAlumnos(0, 1000).subscribe({

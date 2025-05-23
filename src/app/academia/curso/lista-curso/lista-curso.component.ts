@@ -1,17 +1,19 @@
 import { Component, OnInit } from '@angular/core';
-import { CursoEntity } from '../../../interfaces/curso-entity';
+
 import { Page } from '../../../interfaces/page';
 import { CursoService } from '../../../services/curso.service';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PaginationComponent } from '../../pagination/pagination/pagination.component';
-import { ProfesorEntity } from '../../../interfaces/profesor-entity';
-import { AlumnoEntity } from '../../../interfaces/alumno-entity';
+
 import { AlumnoService } from '../../../services/alumno.service';
 import { ProfesorService } from '../../../services/profesor.service';
 import { forkJoin, map, of, switchMap } from 'rxjs';
 import { fromReadableStreamLike } from 'rxjs/internal/observable/innerFrom';
+import { CursoResponseDTO } from '../../../interfaces/curso-entity';
+import { ProfesorSimpleDTO } from '../../../interfaces/profesor-entity';
+import { AlumnoSimpleDTO } from '../../../interfaces/alumno-entity';
 
 @Component({
   selector: 'app-lista-curso',
@@ -22,8 +24,8 @@ import { fromReadableStreamLike } from 'rxjs/internal/observable/innerFrom';
 })
 export class ListaCursoComponent implements OnInit{
 
-  cursos : CursoEntity[] = [];
-  page: Page<CursoEntity> | null = null;
+  cursos : CursoResponseDTO[] = [];
+  page: Page<CursoResponseDTO> | null = null;
   niveles: string[] = [];
   //Parametros de la paginacion y del filtrado
   currentPage: number = 0;
@@ -45,17 +47,17 @@ export class ListaCursoComponent implements OnInit{
   // Propiedades para el modal de profesores
   showProfesorModal: boolean = false;
   loadingProfesores: boolean = false;
-  profesoresDisponibles: ProfesorEntity[] = [];
+  profesoresDisponibles: ProfesorSimpleDTO[] = [];
   selectedProfesorId: number | null = null;
 
   // Propiedades para el modal de alumnos
   showAlumnoModal: boolean = false;
   loadingAlumnos: boolean = false;
-  alumnosDisponibles: AlumnoEntity[] = [];
+  alumnosDisponibles: AlumnoSimpleDTO[] = [];
   selectedAlumnoId: number | null = null;
 
   //Curso seleccionado donde realizar modificaciones
-  cursoSeleccionado : CursoEntity | null = null;
+  cursoSeleccionado : CursoResponseDTO | null = null;
 
    // Estado de procesamiento
   processingAction: boolean = false;
@@ -226,31 +228,31 @@ export class ListaCursoComponent implements OnInit{
     this.router.navigate(['/cursos/nuevo'], { queryParams });
   }
 
-   formatProfesores(curso: CursoEntity): string {
+   formatProfesores(curso: CursoResponseDTO): string {
     return this.cursoService.formatProfesoresList(curso.profesores ?? []);
   }
 
-  getNumeroAlumnos(curso: CursoEntity): number {
+  getNumeroAlumnos(curso: CursoResponseDTO): number {
     if (!curso.alumnos) {
       return 0;
     }
     return Array.isArray(curso.alumnos) ? curso.alumnos.length : 0;
   }
-   getFullProfesoresList(curso: CursoEntity): string {
+   getFullProfesoresList(curso: CursoResponseDTO): string {
     if (!curso.profesores || curso.profesores.length === 0) {
       return 'No hay profesores asignados';
     }
 
     return curso.profesores.map(p => `${p.nombre} ${p.apellido}`).join(', ');
   }
-  hasPlazasDisponibles(curso: CursoEntity | null): boolean {
+  hasPlazasDisponibles(curso: CursoResponseDTO | null): boolean {
     if (!curso) {
       return false;
     }
 
     return this.cursoService.hasPlazasDisponibles(curso);
   }
-  getPlazasDisponibles(curso: CursoEntity | null): number {
+  getPlazasDisponibles(curso: CursoResponseDTO | null): number {
     if (!curso) {
       return 0;
     }
@@ -261,7 +263,7 @@ export class ListaCursoComponent implements OnInit{
   getMaxAlumnos(): number {
     return this.cursoService.getMaxAlumnos();
   }
-  abrirModalProfesor(curso : CursoEntity): void{
+  abrirModalProfesor(curso : CursoResponseDTO): void{
     this.cursoSeleccionado= curso;
     this.showProfesorModal=true;
     this.loadingProfesores=true;
@@ -288,7 +290,7 @@ export class ListaCursoComponent implements OnInit{
     })
   }
 
-  abrirModalAlumno(curso: CursoEntity): void {
+  abrirModalAlumno(curso: CursoResponseDTO): void {
     // No abrir el modal si no hay plazas disponibles
     if (!this.hasPlazasDisponibles(curso)) {
       return;

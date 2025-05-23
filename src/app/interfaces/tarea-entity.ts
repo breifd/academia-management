@@ -1,29 +1,58 @@
-import { AlumnoEntity } from "./alumno-entity";
-import { CursoEntity } from "./curso-entity";
-import { ProfesorEntity } from "./profesor-entity";
+import { AlumnoSimpleDTO } from "./alumno-entity";
+import { CursoSimpleDTO } from "./curso-entity";
+import { ProfesorSimpleDTO } from "./profesor-entity";
+
 
 export interface TareaEntity {
-    id?: number;
-    nombre: string;
-    descripcion?: string;
-    fechaPublicacion?: string;
-    fechaLimite?: string;
-    documento?: any;
-    nombreDocumento?: string;
-    tipoDocumento?: string;
-    curso?: CursoEntity;
-    profesor?: ProfesorEntity;
-    paraTodosLosAlumnos?: boolean;
-    alumnosAsignados?: AlumnoEntity[]
+  id?: number;
+  nombre: string;
+  descripcion?: string;
+  fechaPublicacion?: string;
+  fechaLimite?: string;
+  nombreDocumento?: string;
+  tipoDocumento?: string;
+  cursoId?: number;
+  profesorId?: number;
+  paraTodosLosAlumnos?: boolean;
 }
 
-export interface TareaDTO{
-    id?: number;
-    nombre: string;
-    descripcion?: string;
-    fechaPublicacion?: string;
-    fechaLimite?: string;
-    cursoId: number;
-    paraTodosLosAlumnos?: boolean;
-    alumnosIds?: number[];
+// Para recibir datos del backend (mapea a TareaResponseDTO.java)
+export interface TareaResponseDTO {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  fechaPublicacion?: string;
+  fechaLimite?: string;
+  paraTodosLosAlumnos: boolean;
+  nombreDocumento?: string;
+  tieneDocumento: boolean;
+
+  // Info básica sin recursión
+  curso?: CursoSimpleDTO;
+  profesor?: ProfesorSimpleDTO;
+  alumnosAsignados?: AlumnoSimpleDTO[];
+
+  // Estadísticas para el frontend
+  totalEntregas: number;
+  entregasPendientes: number;
+}
+
+// Para crear/actualizar tareas (mapea a TareaDTO.java)
+export interface TareaDTO {
+  id?: number;
+  nombre: string;
+  descripcion?: string;
+  fechaPublicacion?: string;
+  fechaLimite: string;
+  cursoId: number;
+  paraTodosLosAlumnos: boolean;
+  alumnosIds?: number[];
+}
+
+// Versión simplificada para listados (mapea a TareaSimpleDTO.java)
+export interface TareaSimpleDTO {
+  id: number;
+  nombre: string;
+  fechaLimite?: string;
+  paraTodosLosAlumnos: boolean;
 }

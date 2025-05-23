@@ -3,13 +3,15 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { TareaService } from '../../../services/tarea.service';
-import { TareaEntity } from '../../../interfaces/tarea-entity';
+
 import { Page } from '../../../interfaces/page';
 import { PaginationComponent } from '../../pagination/pagination/pagination.component';
-import { Usuario } from '../../../interfaces/usuario';
-import { RolUsuario } from '../../../enum/rol-usuario';
+
 import { AuthService } from '../../../services/auth.service';
 import { fromReadableStreamLike } from 'rxjs/internal/observable/innerFrom';
+import { TareaResponseDTO, TareaSimpleDTO } from '../../../interfaces/tarea-entity';
+import { LoginComponent } from '../../login/login/login.component';
+import { LoginResponse, RolUsuario } from '../../../interfaces/usuario';
 
 @Component({
   selector: 'app-lista-tareas',
@@ -20,10 +22,10 @@ import { fromReadableStreamLike } from 'rxjs/internal/observable/innerFrom';
 })
 export class ListaTareasComponent implements OnInit {
   // Propiedades para almacenar la lista de tareas y la página actual
-  tareas: TareaEntity[] = [];
-  page: Page<TareaEntity> | null = null;
+  tareas: TareaResponseDTO[] = [];
+  page: Page<TareaResponseDTO> | null = null;
   //Usuario actual y rol (controlar permisos)
-  usuario: Usuario | null=null;
+  usuario: LoginResponse | null=null;
   rolUsuario = RolUsuario;
   // Parámetros de paginación y filtrado
   currentPage: number = 0;
@@ -234,7 +236,7 @@ export class ListaTareasComponent implements OnInit {
     return new Date(fecha).toLocaleDateString();
   }
 
-  tieneDocumento(tarea: TareaEntity): boolean {
+  tieneDocumento(tarea: TareaResponseDTO): boolean {
     return this.tareaService.tieneDocumento(tarea);
   }
 
@@ -337,7 +339,7 @@ export class ListaTareasComponent implements OnInit {
     return this.usuario?.rol === RolUsuario.ALUMNO;
   }
 
-  isTareaVencida(tarea: TareaEntity | null | undefined): boolean {
+  isTareaVencida(tarea: TareaSimpleDTO | null | undefined): boolean {
     // Comprobación completa de nulos
     if (!tarea || !tarea.fechaLimite) {
       return false;

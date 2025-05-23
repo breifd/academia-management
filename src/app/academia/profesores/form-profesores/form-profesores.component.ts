@@ -1,16 +1,17 @@
-import { ProfesorEntity } from './../../../interfaces/profesor-entity';
+
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ProfesorService } from '../../../services/profesor.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { Usuario } from '../../../interfaces/usuario';
+
 import { AuthService } from '../../../services/auth.service';
 import { UsuarioService } from '../../../services/usuario.service';
-import { RolUsuario } from '../../../enum/rol-usuario';
-import { UsuarioDTO } from '../../../interfaces/usuarioDTO';
+
 import { debounceTime, distinctUntilChanged, switchMap, takeUntil } from 'rxjs/operators';
 import { Subject, of } from 'rxjs';
+import { RolUsuario, UsuarioCreateDTO, UsuarioDTO, UsuarioResponseDTO } from '../../../interfaces/usuario';
+import { ProfesorResponseDTO } from '../../../interfaces/profesor-entity';
 
 export type FormMode = 'view' | 'edit' | 'crear';
 
@@ -26,7 +27,7 @@ export class FormProfesoresComponent implements OnInit, OnDestroy {
   profesorForm: FormGroup;
   usuarioForm: FormGroup;
   crearUsuario: boolean = true; // Siempre true, obligatorio
-  usuarioExistente: Usuario | null = null;
+  usuarioExistente: UsuarioResponseDTO | null = null;
   mode: FormMode = "crear";
   profesorID: number | null = null;
   loading = false;
@@ -274,20 +275,20 @@ export class FormProfesoresComponent implements OnInit, OnDestroy {
     this.error = null;
     this.successMessage = null;
 
-    const profesorData: ProfesorEntity = {
+    const profesorData: ProfesorResponseDTO = {
       ...this.profesorForm.value
     };
 
     // Siempre crear con usuario
     if (this.mode === 'crear') {
-      const usuarioData: Usuario = {
+      const usuarioData: UsuarioCreateDTO = {
         username: this.usuarioForm.get('username')?.value,
         password: this.usuarioForm.get('password')?.value,
         nombre: this.usuarioForm.get('usarMismoNombre')?.value ? profesorData.nombre : '',
         apellido: this.usuarioForm.get('usarMismoNombre')?.value ? profesorData.apellido : '',
         rol: RolUsuario.PROFESOR
       };
-      this.pService.createProfesorWithUser(profesorData, usuarioData).subscribe({
+      this.pService.createProfesorWithUser(profesorData).subscribe({
         next: () => {
           this.successMessage = 'Profesor creado correctamente';
           this.loading = false;
@@ -328,7 +329,7 @@ export class FormProfesoresComponent implements OnInit, OnDestroy {
         this.pService.updateProfesor(this.profesorID, profesorData).subscribe({
           next: () => {
             // Luego crear el usuario
-            const usuarioDTO: UsuarioDTO = {
+            const usuarioDTO: UsuarioCreateDTO = {
               username: this.usuarioForm.get('username')?.value || '',
               password: this.usuarioForm.get('password')?.value || '',
               nombre: this.usuarioForm.get('usarMismoNombre')?.value ? profesorData.nombre : (this.usuarioForm.get('nombre')?.value || ''),

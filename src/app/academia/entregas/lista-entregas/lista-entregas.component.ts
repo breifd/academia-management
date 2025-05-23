@@ -2,13 +2,13 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PaginationComponent } from '../../pagination/pagination/pagination.component';
-import { EntregaEntity, EstadoEntrega } from '../../../interfaces/Entregas';
 import { Page } from '../../../interfaces/page';
-import { Usuario } from '../../../interfaces/usuario';
-import { RolUsuario } from '../../../enum/rol-usuario';
 import { EntregaService } from '../../../services/entrega.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
+import { EntregaEntity, EntregaResponseDTO, EstadoEntrega } from '../../../interfaces/entregas-entity';
+import { LoginResponse, RolUsuario, UsuarioResponseDTO } from '../../../interfaces/usuario';
+
 
 @Component({
   selector: 'app-lista-entregas',
@@ -19,11 +19,11 @@ import { AuthService } from '../../../services/auth.service';
 })
 export class ListaEntregasComponent implements OnInit{
 
-  entregas : EntregaEntity[] = [];
-  page : Page<EntregaEntity> | null=null;
+  entregas : EntregaResponseDTO[] = [];
+  page : Page<EntregaResponseDTO> | null=null;
 
   //Usuario actual y Rol
-  usuario: Usuario | null=null;
+  usuario: LoginResponse | null=null;
   rolUsuario = RolUsuario;
   estadoEntrega = EstadoEntrega;
 
@@ -234,7 +234,7 @@ export class ListaEntregasComponent implements OnInit{
     return this.entregaService.formatFechaEntrega(fecha);
   }
 
-  tieneDocumento(entrega: EntregaEntity): boolean {
+  tieneDocumento(entrega: EntregaResponseDTO): boolean {
     return this.entregaService.tieneDocumento(entrega);
   }
 
@@ -246,15 +246,15 @@ export class ListaEntregasComponent implements OnInit{
     return this.entregaService.getEstadoTexto(estado);
   }
 
-  formatNota(entrega: EntregaEntity): string {
+  formatNota(entrega: EntregaResponseDTO): string {
     return this.entregaService.formatNota(entrega);
   }
 
-  estaCalificada(entrega: EntregaEntity): boolean {
+  estaCalificada(entrega: EntregaResponseDTO): boolean {
     return this.entregaService.estaCalificada(entrega);
   }
 
-  puedeSubirDocumento(entrega: EntregaEntity): boolean {
+  puedeSubirDocumento(entrega: EntregaResponseDTO): boolean {
     return this.entregaService.puedeSubirDocumento(entrega);
   }
 

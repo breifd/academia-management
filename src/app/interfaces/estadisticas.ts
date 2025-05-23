@@ -1,5 +1,7 @@
 // Importar las interfaces necesarias
-import { TareaEntity } from './tarea-entity';
+
+import { TareaEntity } from "./tarea-entity";
+
 
 export interface EstadisticasGenerales {
   totalProfesores: number;

@@ -1,14 +1,14 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { TareaEntity } from '../../../interfaces/tarea-entity';
-import { CalificacionDTO, EntregaEntity, EntregaRequestDTO, EstadoEntrega } from '../../../interfaces/Entregas';
-import { Usuario } from '../../../interfaces/usuario';
-import { RolUsuario } from '../../../enum/rol-usuario';
+
 import { EntregaService } from '../../../services/entrega.service';
 import { TareaService } from '../../../services/tarea.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
+import { TareaResponseDTO, TareaSimpleDTO } from '../../../interfaces/tarea-entity';
+import { CalificacionDTO, EntregaRequestDTO, EntregaResponseDTO, EstadoEntrega } from '../../../interfaces/entregas-entity';
+import { LoginResponse, RolUsuario } from '../../../interfaces/usuario';
 
 export type FormMode = 'view' | 'edit' | 'crear' | 'calificar';
 
@@ -27,9 +27,9 @@ export class FormEntregaComponent implements OnInit {
 
   entregaID: number | null = null;
   tareaID: number | null = null;
-  tarea: TareaEntity | null = null;
-  entrega: EntregaEntity | null = null;
-  usuario: Usuario | null = null;
+  tarea: TareaResponseDTO | null = null;
+  entrega: EntregaResponseDTO | null = null;
+  usuario: LoginResponse | null = null;
 
   loading = false;
   error: string | null = null;

@@ -2,8 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
-import { LoginRequest } from '../../../interfaces/login-request';
+
 import { CommonModule } from '@angular/common';
+import { LoginRequest } from '../../../interfaces/usuario';
 
 @Component({
   selector: 'app-login',

@@ -3,14 +3,16 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CursoService } from '../../../services/curso.service';
-import { CursoEntity } from '../../../interfaces/curso-entity';
+
 import { ProfesorService } from '../../../services/profesor.service';
 import { AlumnoService } from '../../../services/alumno.service';
-import { ProfesorEntity } from '../../../interfaces/profesor-entity';
-import { AlumnoEntity } from '../../../interfaces/alumno-entity';
+
 import { forkJoin, of } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import {AbstractControl} from '@angular/forms'
+import { ProfesorResponseDTO, ProfesorSimpleDTO } from '../../../interfaces/profesor-entity';
+import { AlumnoResponseDTO, AlumnoSimpleDTO } from '../../../interfaces/alumno-entity';
+import { CursoCreateDTO, CursoResponseDTO } from '../../../interfaces/curso-entity';
 
 export type FormMode = 'view' | 'edit' | 'crear';
 
@@ -35,22 +37,22 @@ export class FormCursoComponent implements OnInit {
 
   // Propiedades para profesores
   loadingProfesores: boolean = false;
-  profesoresAsignados: ProfesorEntity[] = [];
+  profesoresAsignados: ProfesorSimpleDTO[] = [];
 
   // Propiedades para el modal de profesores
   showProfesorModal: boolean = false;
   loadingProfesoresDisponibles: boolean = false;
-  profesoresDisponibles: ProfesorEntity[] = [];
+  profesoresDisponibles: ProfesorSimpleDTO[] = [];
   selectedProfesorId: number | null = null;
 
   // Propiedades para alumnos
   loadingAlumnos: boolean = false;
-  alumnosMatriculados: AlumnoEntity[] = [];
+  alumnosMatriculados: AlumnoSimpleDTO[] = [];
 
   // Propiedades para el modal de alumnos
   showAlumnoModal: boolean = false;
   loadingAlumnosDisponibles: boolean = false;
-  alumnosDisponibles: AlumnoEntity[] = [];
+  alumnosDisponibles: AlumnoResponseDTO[] = [];
   selectedAlumnoId: number | null = null;
 
   // Estado de procesamiento
@@ -69,13 +71,17 @@ export class FormCursoComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    console.log('🚀 Inicializando FormCursoComponent');
     this.route.params.subscribe(params => {
       const id = params['id'];
+      console.log('📝 Params ID:', id);
 
       this.route.queryParams.subscribe(queryParams => {
         this.mode = queryParams['modo'] as FormMode;
+         console.log('🎯 Modo:', this.mode);
         if (id && (this.mode === 'view' || this.mode === 'edit')) {
           this.cursoID = +id;
+          console.log('🆔 Curso ID asignado:', this.cursoID);
           this.loadCurso(this.cursoID);
           this.cursoForm.get('maxAlumnos')?.disable();
         }
@@ -108,6 +114,7 @@ export class FormCursoComponent implements OnInit {
     this.loading = true;
     this.cursoService.getCursoById(id).subscribe({
       next: (curso) => {
+        console.log('✅ Curso cargado:', curso);
         this.cursoForm.patchValue({
           nombre: curso.nombre,
           descripcion: curso.descripcion,
@@ -126,6 +133,7 @@ export class FormCursoComponent implements OnInit {
         }
       },
       error: (err) => {
+        console.error('❌ Error al cargar curso:', err);
         this.error = 'Error al cargar los datos del curso';
         this.loading = false;
         console.error('Error:', err);
@@ -205,9 +213,11 @@ export class FormCursoComponent implements OnInit {
     this.error = null;
     this.successMessage = null;
 
-    const cursoData: CursoEntity = {
-      ...this.cursoForm.value,
-      maxAlumnos:30 //forzamos el valor
+    const cursoData: CursoCreateDTO = {
+       nombre: this.cursoForm.get('nombre')?.value,
+       descripcion: this.cursoForm.get('descripcion')?.value,
+       nivel: this.cursoForm.get('nivel')?.value,
+       precio: this.cursoForm.get('precio')?.value
     };
 
     if (this.mode === 'edit' && this.cursoID) {

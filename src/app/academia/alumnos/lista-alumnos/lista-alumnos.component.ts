@@ -2,11 +2,12 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PaginationComponent } from '../../pagination/pagination/pagination.component';
-import { AlumnoEntity } from '../../../interfaces/alumno-entity';
+
 import { Page } from '../../../interfaces/page';
 import { AlumnoService } from '../../../services/alumno.service';
 import { Router } from '@angular/router';
 import { UsuarioService } from '../../../services/usuario.service';
+import { AlumnoResponseDTO } from '../../../interfaces/alumno-entity';
 
 @Component({
   selector: 'app-lista-alumnos',
@@ -16,8 +17,8 @@ import { UsuarioService } from '../../../services/usuario.service';
 })
 export class ListaAlumnosComponent implements OnInit {
 
-  alumnos: AlumnoEntity[] =[];
-  page: Page<AlumnoEntity> |null = null; // Propiedad para almacenar la página de alumnos
+  alumnos: AlumnoResponseDTO[] =[];
+  page: Page<AlumnoResponseDTO> |null = null; // Propiedad para almacenar la página de alumnos
   // Propiedades para la paginación
   currentPage: number = 0; // Página actual
   pageSize: number = 10; // Tamaño de página

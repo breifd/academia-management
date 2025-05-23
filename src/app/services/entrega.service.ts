@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { Page } from '../interfaces/page';
-import { CalificacionDTO, EntregaEntity, EntregaRequestDTO, EstadoEntrega } from '../interfaces/Entregas';
+import { EntregaResponseDTO, EntregaCreateDTO, EstadoEntrega, CalificacionDTO } from '../interfaces/entregas-entity';
 
 
 @Injectable({
@@ -14,31 +14,31 @@ export class EntregaService {
   constructor(private http: HttpClient) { }
 
   // Métodos básicos CRUD
-  getEntregas(page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<EntregaEntity>> {
+  getEntregas(page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<EntregaResponseDTO>> {
     let params = new HttpParams()
       .set('page', page.toString())
       .set('size', size.toString())
       .set('sort', sort)
       .set('direction', direction);
 
-    return this.http.get<Page<EntregaEntity>>(this.apiUrl, { params });
+    return this.http.get<Page<EntregaResponseDTO>>(this.apiUrl, { params });
   }
 
-  getEntregaById(id: number): Observable<EntregaEntity> {
-    return this.http.get<EntregaEntity>(`${this.apiUrl}/${id}`);
+  getEntregaById(id: number): Observable<EntregaResponseDTO> {
+    return this.http.get<EntregaResponseDTO>(`${this.apiUrl}/${id}`);
   }
 
   // Crear una nueva entrega
-  createEntrega(entregaDTO: EntregaRequestDTO): Observable<EntregaEntity> {
-    return this.http.post<EntregaEntity>(this.apiUrl, entregaDTO);
+  createEntrega(entregaDTO: EntregaCreateDTO): Observable<EntregaResponseDTO> {
+    return this.http.post<EntregaResponseDTO>(this.apiUrl, entregaDTO);
   }
 
   // Subir documento a una entrega
-  uploadDocumento(id: number, file: File): Observable<EntregaEntity> {
+  uploadDocumento(id: number, file: File): Observable<EntregaResponseDTO> {
     const formData = new FormData();
     formData.append('file', file);
 
-    return this.http.post<EntregaEntity>(`${this.apiUrl}/${id}/documento`, formData);
+    return this.http.post<EntregaResponseDTO>(`${this.apiUrl}/${id}/documento`, formData);
   }
 
   // Descargar documento de una entrega
@@ -49,8 +49,8 @@ export class EntregaService {
   }
 
   // Calificar una entrega (solo profesores)
-  calificarEntrega(id: number, calificacion: CalificacionDTO): Observable<EntregaEntity> {
-    return this.http.post<EntregaEntity>(`${this.apiUrl}/${id}/calificar`, calificacion);
+  calificarEntrega(id: number, calificacion: CalificacionDTO): Observable<EntregaResponseDTO> {
+    return this.http.post<EntregaResponseDTO>(`${this.apiUrl}/${id}/calificar`, calificacion);
   }
 
   // Eliminar una entrega (solo admin)
@@ -61,14 +61,14 @@ export class EntregaService {
   // Métodos específicos para profesores
 
   // Obtener entregas pendientes de calificación
-  getEntregasPendientesCalificacion(page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<EntregaEntity>> {
+  getEntregasPendientesCalificacion(page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<EntregaResponseDTO>> {
     let params = new HttpParams()
       .set('page', page.toString())
       .set('size', size.toString())
       .set('sort', sort)
       .set('direction', direction);
 
-    return this.http.get<Page<EntregaEntity>>(`${this.apiUrl}/pendientes`, { params });
+    return this.http.get<Page<EntregaResponseDTO>>(`${this.apiUrl}/pendientes`, { params });
   }
 
   // Contar entregas pendientes de calificación
@@ -79,20 +79,20 @@ export class EntregaService {
   // Métodos específicos para alumnos
 
   // Obtener entregas de un alumno (el alumno autenticado)
-  getEntregasByAlumno(page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<EntregaEntity>> {
+  getEntregasByAlumno(page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<EntregaResponseDTO>> {
     let params = new HttpParams()
       .set('page', page.toString())
       .set('size', size.toString())
       .set('sort', sort)
       .set('direction', direction);
 
-    return this.http.get<Page<EntregaEntity>>(`${this.apiUrl}/alumno`, { params });
+    return this.http.get<Page<EntregaResponseDTO>>(`${this.apiUrl}/alumno`, { params });
   }
 
   // Métodos de utilidad
 
   // Verificar si una entrega tiene documento
-  tieneDocumento(entrega: EntregaEntity): boolean {
+  tieneDocumento(entrega: EntregaResponseDTO): boolean {
     return entrega.nombreDocumento !== undefined &&
            entrega.nombreDocumento !== null &&
            entrega.nombreDocumento !== '';
@@ -144,20 +144,20 @@ export class EntregaService {
   }
 
   // Verificar si se puede subir documento a una entrega
-  puedeSubirDocumento(entrega: EntregaEntity): boolean {
+  puedeSubirDocumento(entrega: EntregaResponseDTO): boolean {
     return entrega.estado === EstadoEntrega.PENDIENTE ||
            entrega.estado === EstadoEntrega.ENTREGADA;
   }
 
   // Verificar si una entrega está calificada
-  estaCalificada(entrega: EntregaEntity): boolean {
+  estaCalificada(entrega: EntregaResponseDTO): boolean {
     return entrega.estado === EstadoEntrega.CALIFICADA &&
            entrega.nota !== undefined &&
            entrega.nota !== null;
   }
 
   // Formatear nota
-  formatNota(entrega: EntregaEntity): string {
+  formatNota(entrega: EntregaResponseDTO): string {
     if (entrega.nota === undefined || entrega.nota === null) {
       return 'Sin calificar';
     }
@@ -165,7 +165,7 @@ export class EntregaService {
   }
 
   // Verificar si una entrega está fuera de plazo
-  estaFueraDePlazo(entrega: EntregaEntity): boolean {
+  estaFueraDePlazo(entrega: EntregaResponseDTO): boolean {
     return entrega.estado === EstadoEntrega.FUERA_PLAZO;
   }
 }

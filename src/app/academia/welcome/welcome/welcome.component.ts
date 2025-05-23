@@ -1,5 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { Usuario } from '../../../interfaces/usuario';
+
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
 import { forkJoin, Subscription } from 'rxjs';
@@ -9,6 +9,7 @@ import { CursoService } from '../../../services/curso.service';
 import { ProfesorService } from '../../../services/profesor.service';
 import { AlumnoService } from '../../../services/alumno.service';
 import { EntregaService } from '../../../services/entrega.service';
+import { LoginResponse } from '../../../interfaces/usuario';
 
 
 interface EstadisticasData {
@@ -42,7 +43,7 @@ export class WelcomeComponent implements OnInit, OnDestroy {
     error: null as string | null
   };
 
-  usuario: Usuario | null = null;
+  usuario: LoginResponse | null = null;
   private userSubscription: Subscription | undefined; // Subscription para el usuario actual que se obtiene del servicio de autenticación
 
   constructor(private router : Router,

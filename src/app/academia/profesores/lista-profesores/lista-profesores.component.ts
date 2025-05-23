@@ -3,10 +3,11 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProfesorService } from '../../../services/profesor.service';
-import { ProfesorEntity } from  '../../../interfaces/profesor-entity';
+
 import { Page } from '../../../interfaces/page';
 import { PaginationComponent } from '../../pagination/pagination/pagination.component';
 import { ActivatedRoute, Route, Router } from '@angular/router';
+import { ProfesorResponseDTO } from '../../../interfaces/profesor-entity';
 
 @Component({
   selector: 'app-profesores',
@@ -17,8 +18,8 @@ import { ActivatedRoute, Route, Router } from '@angular/router';
 })
 export class ProfesoresComponent implements OnInit {
   // Propiedades para almacenar la lista de profesores y la página actual
-  profesores: ProfesorEntity[] = [];
-  page: Page<ProfesorEntity> | null = null;
+  profesores: ProfesorResponseDTO[] = [];
+  page: Page<ProfesorResponseDTO> | null = null;
 
   // Parámetros de paginación y filtrado
   currentPage: number = 0;
