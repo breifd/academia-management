@@ -60,6 +60,7 @@ export class FormTareasComponent implements OnInit {
     this.authService.currentUser.subscribe(user => {
       this.usuario = user;
       if (this.usuario) {
+        console.log('🔍 Modo inicial:', this.mode); // Debug
         this.handleRouteParams();
         this.loadInitialData();
       }
@@ -69,13 +70,17 @@ export class FormTareasComponent implements OnInit {
   handleRouteParams(): void {
     this.route.params.subscribe(params => {
       const id = params['id'];
+      console.log('🔍 ID desde params:', id); // Debug
 
       this.route.queryParams.subscribe(queryParams => {
+
+        console.log('🔍 Query params:', queryParams); // Debug
         this.mode = queryParams['modo'] as FormMode;
         if (id && (this.mode === 'view' || this.mode === 'edit')) {
           this.tareaID = +id;
           this.loadTarea(this.tareaID);
         } else if (this.mode === 'crear') {
+            console.log('✅ Modo establecido en CREAR'); // Debug
           // Si es crear, inicializar con la fecha de hoy
           this.tareaForm.patchValue({
             fechaPublicacion: this.today,
