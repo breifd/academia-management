@@ -45,6 +45,7 @@ export interface TareaDTO {
   fechaPublicacion?: string;
   fechaLimite: string;
   cursoId: number;
+  profesorId?: number;
   paraTodosLosAlumnos: boolean;
   alumnosIds?: number[];
 }

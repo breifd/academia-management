@@ -24,6 +24,30 @@
 
     <!-- Información de la tarea (si existe) -->
     <div *ngIf="tarea" style="background-color: #f8f9fa; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+      <div *ngIf="mode === 'crear' && tarea" class="estado-tarea-info"
+          [style.background-color]="isTareaVencida() ? '#ffebee' : '#e8f5e9'"
+          style="padding: 16px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid;"
+          [style.border-left-color]="isTareaVencida() ? '#d32f2f' : '#4caf50'">
+
+        <h4 style="margin: 0 0 8px 0; font-size: 16px;"
+            [style.color]="isTareaVencida() ? '#d32f2f' : '#2e7d32'">
+          Estado de la Tarea
+        </h4>
+
+        <p style="margin: 0; font-weight: 500;"
+          [style.color]="isTareaVencida() ? '#d32f2f' : '#2e7d32'">
+          {{ getMensajeEstado() }}
+        </p>
+
+        <div *ngIf="isTareaVencida()" style="margin-top: 8px; font-size: 14px; color: #d32f2f;">
+          <strong>Consecuencias:</strong>
+          <ul style="margin: 4px 0 0 20px;">
+            <li>Tu entrega será marcada como "FUERA DE PLAZO"</li>
+            <li>Se asignará automáticamente una calificación de 0</li>
+            <li>El profesor verá que la entrega fue tardía</li>
+          </ul>
+        </div>
+      </div>
       <h3 style="margin: 0 0 12px 0; font-size: 18px; color: #333;">Información de la Tarea</h3>
       <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
         <div>

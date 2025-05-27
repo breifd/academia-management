@@ -68,5 +68,6 @@ export interface EntregaSimpleDTO {
 // Para solicitar una entrega específica
 export interface EntregaRequestDTO {
   tareaId: number;
+  alumnoId?: number;
   comentarios?: string;
 }

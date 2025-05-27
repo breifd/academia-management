@@ -333,6 +333,7 @@ export class FormTareasComponent implements OnInit {
       fechaPublicacion: this.tareaForm.get('fechaPublicacion')?.value,
       fechaLimite: this.tareaForm.get('fechaLimite')?.value,
       cursoId: +this.tareaForm.get('cursoId')?.value,
+      profesorId: this.usuario?.profesorId || undefined, // ✅ AGREGADO: Enviar ID del profesor autenticado
       paraTodosLosAlumnos: this.tareaForm.get('paraTodosLosAlumnos')?.value,
       alumnosIds: this.tareaForm.get('alumnosIds')?.value || []
     };

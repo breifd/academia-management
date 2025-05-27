@@ -7,7 +7,7 @@ import { TareaService } from '../../../services/tarea.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
 import { TareaResponseDTO, TareaSimpleDTO } from '../../../interfaces/tarea-entity';
-import { CalificacionDTO, EntregaRequestDTO, EntregaResponseDTO, EstadoEntrega } from '../../../interfaces/entregas-entity';
+import { CalificacionDTO, EntregaCreateDTO, EntregaRequestDTO, EntregaResponseDTO, EstadoEntrega } from '../../../interfaces/entregas-entity';
 import { LoginResponse, RolUsuario } from '../../../interfaces/usuario';
 
 export type FormMode = 'view' | 'edit' | 'crear' | 'calificar';
@@ -177,66 +177,99 @@ export class FormEntregaComponent implements OnInit {
     }
   }
 
-  crearEntrega(): void {
-    if (this.entregaForm.invalid || !this.tareaID) {
-      this.entregaForm.markAllAsTouched();
-      return;
+// ✅ MÉTODO CORREGIR: Pasar alumnoId desde el frontend
+crearEntrega(): void {
+  if (!this.tareaID) {
+    this.error = 'No se puede crear la entrega sin una tarea válida.';
+    return;
+  }
+
+  // ✅ VERIFICAR QUE TENEMOS EL ALUMNO ID
+  if (!this.usuario?.alumnoId) {
+    this.error = 'No se puede identificar al alumno actual.';
+    return;
+  }
+
+  this.loading = true;
+  this.error = null;
+  this.successMessage = null;
+
+  const tareaVencida = this.isTareaVencida();
+  let mensajeAdvertencia = '';
+
+  if (tareaVencida) {
+    mensajeAdvertencia = '\n⚠️ ADVERTENCIA: La tarea está vencida. Se aplicará penalización automática.';
+  }
+
+  // ✅ INCLUIR ALUMNO ID EN EL DTO
+  const entregaData: EntregaCreateDTO = {
+    tareaId: this.tareaID,
+    alumnoId: this.usuario.alumnoId, // 🔥 ESTO ES LO IMPORTANTE
+    comentarios: (this.entregaForm.get('comentarios')?.value || '') + mensajeAdvertencia
+  };
+
+  console.log('🔥 Enviando entrega con datos:', entregaData);
+
+  this.entregaService.createEntrega(entregaData).subscribe({
+    next: (entrega) => {
+      this.entrega = entrega;
+      this.entregaID = entrega.id!;
+
+      if (tareaVencida) {
+        this.successMessage = '⚠️ Entrega creada FUERA DE PLAZO. Se ha aplicado penalización automática (Nota: 0).';
+      } else {
+        this.successMessage = '✅ Entrega creada correctamente. Ahora puedes subir tu documento.';
+      }
+
+      // Si hay archivo seleccionado, subirlo
+      if (this.archivoSeleccionado) {
+        setTimeout(() => this.uploadFile(), 1000);
+      } else {
+        this.loading = false;
+        setTimeout(() => this.router.navigate(['/tareas']), 3000);
+      }
+    },
+    error: (err) => {
+      console.error('❌ Error completo:', err);
+      this.error = err.error?.error || 'Error al crear la entrega. Inténtelo de nuevo.';
+      this.loading = false;
     }
-
+  });
+}
+ // ✅ MÉTODO SOBRESCRIBIR: Upload mejorado
+uploadFile(): void {
+  if (this.entregaID && this.archivoSeleccionado) {
     this.loading = true;
-    this.error = null;
-    this.successMessage = null;
 
-    const entregaData: EntregaRequestDTO = {
-      tareaId: this.tareaID,
-      comentarios: this.entregaForm.get('comentarios')?.value || ''
-    };
-
-    this.entregaService.createEntrega(entregaData).subscribe({
+    this.entregaService.uploadDocumento(this.entregaID, this.archivoSeleccionado).subscribe({
       next: (entrega) => {
         this.entrega = entrega;
-        this.entregaID = entrega.id!;
-        this.successMessage = 'Entrega creada correctamente';
+        this.nombreArchivoActual = entrega.nombreDocumento || null;
 
-        // Si hay archivo seleccionado, subirlo
-        if (this.archivoSeleccionado) {
-          this.uploadFile();
+        // ✅ NUEVA LÓGICA: Actualizar estado tras subir documento
+        if (entrega.estado === 'FUERA_PLAZO') {
+          this.successMessage = '📄 Documento subido. Entrega marcada como FUERA DE PLAZO (Nota: 0).';
         } else {
-          this.loading = false;
-          setTimeout(() => this.router.navigate(['/entregas']), 2000);
+          this.successMessage = '📄 Documento subido correctamente. Entrega completada.';
         }
+
+        this.loading = false;
+        this.archivoSeleccionado = null;
+
+        // Limpiar input file
+        const fileInput = document.getElementById('documento') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+
+        setTimeout(() => this.router.navigate(['/tareas']), 2000);
       },
       error: (err) => {
-        this.error = 'Error al crear la entrega. Inténtelo de nuevo más tarde.';
+        this.error = 'Error al subir el documento. Inténtelo de nuevo.';
         this.loading = false;
         console.error('Error:', err);
       }
     });
   }
-
-  uploadFile(): void {
-    if (this.entregaID && this.archivoSeleccionado) {
-      this.entregaService.uploadDocumento(this.entregaID, this.archivoSeleccionado).subscribe({
-        next: (entrega) => {
-          this.entrega = entrega;
-          this.nombreArchivoActual = entrega.nombreDocumento || null;
-          this.successMessage = 'Documento subido correctamente';
-          this.loading = false;
-          this.archivoSeleccionado = null;
-
-          // Resetear input file
-          const fileInput = document.getElementById('documento') as HTMLInputElement;
-          if (fileInput) fileInput.value = '';
-        },
-        error: (err) => {
-          this.error = 'Error al subir el documento. Inténtelo de nuevo más tarde.';
-          this.loading = false;
-          console.error('Error:', err);
-        }
-      });
-    }
-  }
-
+}
   calificarEntrega(): void {
     if (this.calificacionForm.invalid || !this.entregaID) {
       this.calificacionForm.markAllAsTouched();
@@ -366,6 +399,30 @@ export class FormEntregaComponent implements OnInit {
   mostrarFormularioCalificacion(): boolean {
     return this.mode === 'calificar' || (this.mode === 'view' && this.entrega?.nota !== undefined);
   }
+
+  // ✅ MÉTODO NUEVO: Verificar advertencias de tarea vencida
+mostrarAdvertenciaVencimiento(): boolean {
+  return this.mode === 'crear' && this.isTareaVencida();
+}
+
+// ✅ MÉTODO NUEVO: Obtener mensaje de estado
+getMensajeEstado(): string {
+  if (!this.tarea) return '';
+
+  if (this.isTareaVencida()) {
+    return '⚠️ Esta tarea está VENCIDA. La entrega será penalizada automáticamente con nota 0.';
+  } else if (this.tarea.fechaLimite) {
+    const ahora = new Date();
+    const fechaLimite = new Date(this.tarea.fechaLimite);
+    const horasRestantes = Math.ceil((fechaLimite.getTime() - ahora.getTime()) / (1000 * 60 * 60));
+
+    if (horasRestantes <= 24) {
+      return `⏰ ¡Atención! Quedan menos de ${horasRestantes} horas para la fecha límite.`;
+    }
+  }
+
+  return '✅ Puedes realizar tu entrega normalmente.';
+}
 
 
 

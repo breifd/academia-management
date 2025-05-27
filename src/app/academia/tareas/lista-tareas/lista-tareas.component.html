@@ -1,48 +1,19 @@
 <div class="tareas-container">
+  <!-- Cabecera -->
   <div class="page-header">
     <div class="header-actions">
-      <h1>
-        <span *ngIf="esProfesor()">Mis Tareas Creadas</span>
-        <span *ngIf="esAlumno()">Mis Tareas Asignadas</span>
-        <span *ngIf="usuario?.rol === rolUsuario.ADMIN">Todas las Tareas</span>
-      </h1>
+      <h1>{{ getHeaderTitle() }}</h1>
       <button
         *ngIf="puedeCrearTarea()"
-        class="btn btn-success"
-        (click)="nuevaTarea()">
-        <i class="fa fa-plus"></i> Nueva Tarea
+        (click)="crearTarea()"
+        class="btn btn-primary">
+        <span>➕ Nueva Tarea</span>
       </button>
     </div>
   </div>
 
+  <!-- Filtros -->
   <div class="filters-container">
-    <div class="tabs">
-      <button
-        class="tab-button"
-        [class.active]="activeTab === 'todos'"
-        (click)="setActiveTab('todos')">
-        <span *ngIf="esProfesor()">Todas mis tareas</span>
-        <span *ngIf="esAlumno()">Todas mis asignadas</span>
-        <span *ngIf="usuario?.rol === rolUsuario.ADMIN">Todas las tareas</span>
-      </button>
-      <button
-        class="tab-button"
-        [class.active]="activeTab === 'pendientes'"
-        (click)="setActiveTab('pendientes')">
-        <span *ngIf="esProfesor()">Activas</span>
-        <span *ngIf="esAlumno()">Por entregar</span>
-        <span *ngIf="usuario?.rol === rolUsuario.ADMIN">Pendientes</span>
-      </button>
-      <button
-        class="tab-button"
-        [class.active]="activeTab === 'vencidas'"
-        (click)="setActiveTab('vencidas')">
-        <span *ngIf="esProfesor()">Vencidas</span>
-        <span *ngIf="esAlumno()">Vencidas</span>
-        <span *ngIf="usuario?.rol === rolUsuario.ADMIN">Vencidas</span>
-      </button>
-    </div>
-
     <div class="search-form">
       <div class="form-group">
         <label for="nombreFilter">Buscar por nombre</label>
@@ -51,16 +22,43 @@
           id="nombreFilter"
           [(ngModel)]="nombreFilter"
           class="form-control"
-          placeholder="Nombre de la tarea">
+          placeholder="Nombre de la tarea...">
+      </div>
+
+      <div class="form-group" *ngIf="cursos.length > 0">
+        <label for="cursoFilter">Filtrar por curso</label>
+        <select
+          id="cursoFilter"
+          [(ngModel)]="cursoFilter"
+          class="form-control">
+          <option [ngValue]="null">Todos los cursos</option>
+          <option *ngFor="let curso of cursos" [ngValue]="curso.id">
+            {{ curso.nombre }} - {{ curso.nivel || 'Sin nivel' }}
+          </option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="estadoFilter">Estado de las tareas</label>
+        <select
+          id="estadoFilter"
+          [(ngModel)]="estadoFilter"
+          class="form-control">
+          <option value="todas">Todas</option>
+          <option value="activas">Activas</option>
+          <option value="pendientes">Pendientes</option>
+          <option value="vencidas">Vencidas</option>
+        </select>
       </div>
 
       <div class="form-buttons">
-        <button (click)="search()" class="btn btn-primary">Buscar</button>
+        <button (click)="search()" class="btn btn-primary">Filtrar</button>
         <button (click)="resetFilters()" class="btn btn-secondary">Limpiar</button>
       </div>
     </div>
   </div>
 
+  <!-- Mensajes -->
   <div *ngIf="loading" class="loading-container">
     <div class="spinner"></div>
     <p>Cargando tareas...</p>
@@ -70,11 +68,42 @@
     {{ error }}
   </div>
 
+  <div *ngIf="successMessage" class="alert alert-success">
+    {{ successMessage }}
+  </div>
+
+  <!-- Información específica para alumnos -->
+  <div *ngIf="esAlumno() && !loading && !error" class="info-alumno">
+    <div class="info-card">
+      <h3>📚 Información para ti</h3>
+      <p>Aquí puedes ver todas las tareas que tienes asignadas. Incluye tareas de todos tus cursos y tareas específicas asignadas solo a ti.</p>
+      <div class="estadisticas">
+        <div class="stat">
+          <span class="number">{{ tareas.length }}</span>
+          <span class="label">Total de tareas</span>
+        </div>
+        <div class="stat">
+          <span class="number">{{ getTareasActivas() }}</span>
+          <span class="label">Tareas activas</span>
+        </div>
+        <div class="stat">
+          <span class="number">{{ getTareasVencidas() }}</span>
+          <span class="label">Tareas vencidas</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lista de tareas -->
   <div *ngIf="!loading && !error">
     <div *ngIf="tareas.length === 0" class="empty-state">
-      <p *ngIf="esProfesor()">No tienes tareas creadas.</p>
-      <p *ngIf="esAlumno()">No tienes tareas asignadas.</p>
-      <p *ngIf="usuario?.rol === rolUsuario.ADMIN">No se encontraron tareas en el sistema.</p>
+      <p>{{ getEmptyMessage() }}</p>
+      <button
+        *ngIf="puedeCrearTarea()"
+        (click)="crearTarea()"
+        class="btn btn-primary">
+        Crear tu primera tarea
+      </button>
     </div>
 
     <div *ngIf="tareas.length > 0" class="table-responsive">
@@ -84,78 +113,106 @@
             <th>ID</th>
             <th>Nombre</th>
             <th>Curso</th>
+            <th *ngIf="!esAlumno()">Profesor</th>
             <th>Fecha Publicación</th>
             <th>Fecha Límite</th>
-            <th *ngIf="esProfesor()">Entregas</th>
-            <th *ngIf="esAlumno()">Mi Estado</th>
-            <th *ngIf="usuario?.rol === rolUsuario.ADMIN">Profesor</th>
+            <th>Estado</th>
+            <th *ngIf="!esAlumno()">Entregas</th>
             <th>Documento</th>
             <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let tarea of tareas" [class.tarea-vencida]="isTareaVencida(tarea)">
+          <tr *ngFor="let tarea of getPaginatedTareas()"
+              [class.tarea-vencida]="isTareaVencida(tarea)"
+              [class.tarea-activa]="!isTareaVencida(tarea)">
             <td>{{ tarea.id }}</td>
-            <td>{{ tarea.nombre }}</td>
-            <td>{{ tarea.curso?.nombre || 'N/A' }}</td>
-            <td>{{ formatFecha(tarea.fechaPublicacion) }}</td>
-            <td>{{ formatFecha(tarea.fechaLimite) }}</td>
-
-            <!-- Columna para profesores: Ver entregas -->
-            <td *ngIf="esProfesor()" class="entregas-column">
-              <button
-                class="btn btn-sm btn-info"
-                (click)="verEntregas(tarea.id!)"
-                title="Ver entregas de la tarea">
-                📋 Ver Entregas
-              </button>
+            <td>
+              <strong>{{ tarea.nombre }}</strong>
+              <div *ngIf="tarea.descripcion" class="descripcion-preview">
+                {{ tarea.descripcion.length > 50 ? (tarea.descripcion.substring(0, 50) + '...') : tarea.descripcion }}
+              </div>
             </td>
-
-            <!-- Columna para alumnos: Estado de entrega -->
-            <td *ngIf="esAlumno()" class="estado-entrega">
-              <span class="badge badge-warning">Por implementar</span>
-              <!-- TODO: Implementar lógica de estado de entrega del alumno -->
+            <td>
+              <span class="badge badge-curso">{{ tarea.curso?.nombre || 'N/A' }}</span>
+              <div *ngIf="tarea.curso?.nivel" class="nivel-curso">{{ tarea.curso?.nivel }}</div>
             </td>
-
-            <!-- Columna para admin: Mostrar profesor -->
-            <td *ngIf="usuario?.rol === rolUsuario.ADMIN">
+            <td *ngIf="!esAlumno()">
               {{ tarea.profesor?.nombre }} {{ tarea.profesor?.apellido }}
             </td>
-
+            <td>{{ formatFecha(tarea.fechaPublicacion) }}</td>
+            <td>
+              <span [style.color]="isTareaVencida(tarea) ? '#d32f2f' : '#333'">
+                {{ formatFecha(tarea.fechaLimite) }}
+                <span *ngIf="isTareaVencida(tarea)" class="badge badge-danger">VENCIDA</span>
+              </span>
+            </td>
+            <td>
+              <span
+                class="badge estado-badge"
+                [style.background-color]="getEstadoColor(tarea)"
+                [style.color]="'white'">
+                {{ getEstadoTarea(tarea) }}
+              </span>
+            </td>
+            <td *ngIf="!esAlumno()">
+              <div class="entregas-info">
+                <span class="entregas-count">{{ tarea.totalEntregas || 0 }}</span>
+                <span *ngIf="(tarea.entregasPendientes || 0) > 0" class="entregas-pendientes">
+                  ({{ tarea.entregasPendientes }} pendientes)
+                </span>
+              </div>
+            </td>
             <td>
               <div *ngIf="tieneDocumento(tarea)">
-                <span class="badge badge-success">Documento disponible</span>
-                <button class="btn-icon btn-download" title="Descargar documento" (click)="descargarDocumento(tarea.id!)">📥</button>
+                <span class="badge badge-success">Disponible</span>
               </div>
-              <span *ngIf="!tieneDocumento(tarea)" class="badge badge-warning">Sin documento</span>
+              <span *ngIf="!tieneDocumento(tarea)" class="badge badge-secondary">Sin documento</span>
             </td>
-
             <td class="actions-cell">
-              <button class="btn-icon btn-view" title="Ver detalles" (click)="verTarea(tarea.id!)">👁️</button>
-
-              <!-- Botones para profesores y admins -->
+              <!-- Ver detalles -->
               <button
-                *ngIf="puedeEditarTarea()"
+                class="btn-icon btn-view"
+                title="Ver detalles"
+                (click)="verTarea(tarea.id!)">👁️</button>
+
+              <!-- Hacer entrega (solo alumnos) -->
+              <button
+                *ngIf="puedeHacerEntrega(tarea)"
+                class="btn-icon btn-entrega"
+                [class.btn-entrega-vencida]="isTareaVencida(tarea)"
+                [title]="isTareaVencida(tarea) ? 'Hacer entrega (FUERA DE PLAZO)' : 'Hacer entrega'"
+                (click)="hacerEntrega(tarea.id!)">
+                <span *ngIf="!isTareaVencida(tarea)">📤</span>
+                <span *ngIf="isTareaVencida(tarea)">⚠️📤</span>
+              </button>
+
+              <!-- Ver entregas (solo profesores/admin) -->
+              <button
+                *ngIf="puedeVerEntregas(tarea)"
+                class="btn-icon btn-entregas"
+                title="Ver entregas"
+                (click)="verEntregasTarea(tarea.id!)">📋</button>
+
+              <!-- Editar -->
+              <button
+                *ngIf="puedeEditarTarea(tarea)"
                 class="btn-icon btn-edit"
                 title="Editar"
                 (click)="editarTarea(tarea.id!)">✏️</button>
+
+              <!-- Eliminar -->
               <button
-                *ngIf="puedeEditarTarea()"
+                *ngIf="puedeEliminarTarea(tarea)"
                 class="btn-icon btn-delete"
                 title="Eliminar"
                 (click)="eliminarTarea(tarea.id!)">🗑️</button>
-
-              <!-- Botón para alumnos: Hacer entrega -->
-              <button
-                *ngIf="esAlumno()"
-                class="btn-icon btn-upload"
-                title="Hacer entrega"
-                (click)="hacerEntrega(tarea.id!)">📤</button>
             </td>
           </tr>
         </tbody>
       </table>
 
+      <!-- Paginación -->
       <app-pagination
         *ngIf="page"
         [currentPage]="currentPage"
@@ -168,50 +225,4 @@
   </div>
 </div>
 
-<style>
-.tarea-vencida {
-  background-color: #ffebee !important;
-}
 
-.entregas-column {
-  text-align: center;
-}
-
-.estado-entrega {
-  text-align: center;
-}
-
-.badge {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: bold;
-}
-
-.badge-success {
-  background-color: #4caf50;
-  color: white;
-}
-
-.badge-warning {
-  background-color: #ff9800;
-  color: white;
-}
-
-.badge-danger {
-  background-color: #f44336;
-  color: white;
-}
-
-.btn-sm {
-  padding: 4px 8px;
-  font-size: 12px;
-}
-
-.btn-info {
-  background-color: #2196f3;
-  color: white;
-  border: none;
-  border-radius: 4px;
-}
-</style>

@@ -221,14 +221,14 @@
           Cancelar
         </button>
 
-        <!-- Botón Guardar - solo visible en modos editar o crear -->
+        <!--  *ngIf="mode === 'edit' || mode === 'crear'"  Botón Guardar - solo visible en modos editar o crear -->
         <button
-          *ngIf="mode === 'edit' || mode === 'crear'"
+
           type="submit"
           [disabled]="tareaForm.invalid"
           style="padding: 10px 20px; background-color: #1e88e5; color: white; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; min-width: 100px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"
           [ngStyle]="{'opacity': tareaForm.invalid ? '0.7' : '1', 'cursor': tareaForm.invalid ? 'not-allowed' : 'pointer'}">
-          Guardar
+          Guardar (Modo: {{ mode }})
         </button>
       </div>
     </form>

@@ -9,7 +9,6 @@ import { AuthService } from '../../../services/auth.service';
 import { EntregaEntity, EntregaResponseDTO, EstadoEntrega } from '../../../interfaces/entregas-entity';
 import { LoginResponse, RolUsuario, UsuarioResponseDTO } from '../../../interfaces/usuario';
 
-
 @Component({
   selector: 'app-lista-entregas',
   standalone: true,
@@ -20,10 +19,11 @@ import { LoginResponse, RolUsuario, UsuarioResponseDTO } from '../../../interfac
 export class ListaEntregasComponent implements OnInit{
 
   entregas : EntregaResponseDTO[] = [];
-  page : Page<EntregaResponseDTO> | null=null;
+  entregasOriginales: EntregaResponseDTO[] = []; // Para almacenar todas las entregas sin filtrar
+  page : Page<EntregaResponseDTO> | null = null;
 
   //Usuario actual y Rol
-  usuario: LoginResponse | null=null;
+  usuario: LoginResponse | null = null;
   rolUsuario = RolUsuario;
   estadoEntrega = EstadoEntrega;
 
@@ -34,7 +34,7 @@ export class ListaEntregasComponent implements OnInit{
   sortDirection: string = 'desc'; // Más recientes primero
   estadoFilter: EstadoEntrega | '' = '';
 
-  isSearchActive: boolean=false;
+  isSearchActive: boolean = false;
 
   // Propiedades para manejar el estado de carga y errores
   loading: boolean = false;
@@ -56,7 +56,7 @@ export class ListaEntregasComponent implements OnInit{
       //Obtener Usuario actual
       this.authService.currentUser.subscribe(
         user => {
-          this.usuario=user;
+          this.usuario = user;
           if (this.usuario){
             this.handleRouteParams();
           }
@@ -68,9 +68,9 @@ export class ListaEntregasComponent implements OnInit{
     this.route.params.subscribe(
       params=> {
         //Si existe tareaID, lo guarda como numero en la propiedad this.tareaId, sino lo iguala a null
-        this.tareaId= params['tareaId'] ? +params['tareaId'] : null;
+        this.tareaId = params['tareaId'] ? +params['tareaId'] : null;
         this.route.queryParams.subscribe(
-          queryParams =>{
+          queryParams => {
             this.profesorId = queryParams['profesorId'] ? +queryParams['profesorId'] : null;
             this.alumnoId = queryParams['alumnoId'] ? +queryParams['alumnoId'] : null;
 
@@ -80,134 +80,179 @@ export class ListaEntregasComponent implements OnInit{
               this.loadEntregasByTarea();
             } else {
               //Sino muestra las entregas segun el rol del Usuario
-              this.loadEntregasSegunRol();
+              this.loadTodasLasEntregasYFiltrar();
             }
           });
       });
   }
 
-  loadEntregasByTarea():void{
+  loadEntregasByTarea(): void {
+    this.loading = true;
+    this.error = null;
 
-    this.entregaService.getEntregas(this.currentPage,this.pageSize,this.sortBy,this.sortDirection).subscribe({
-      next: (page)=>{
+    this.entregaService.getEntregas(0, 1000, this.sortBy, this.sortDirection).subscribe({
+      next: (page) => {
         //Filtramos las entregas que tengan como tarea la que presente el iD seleccionado
-        this.entregas=page.content.filter(e=> e.tarea?.id === this.tareaId);
-        this.loading=false;
+        this.entregasOriginales = page.content.filter(e => e.tarea?.id === this.tareaId);
+        this.entregas = [...this.entregasOriginales];
+        this.loading = false;
+      },
+      error: (err) => {
+        this.error = "Error al cargar las entregas de la tarea";
+        this.loading = false;
+        console.error("Error: ", err);
       }
-    })
+    });
   }
 
-  loadEntregasSegunRol():void{
-    if(!this.usuario) return;
+  loadTodasLasEntregasYFiltrar(): void {
+    if (!this.usuario) return;
 
-    this.loading=true;
+    this.loading = true;
     this.error = null;
     this.isSearchActive = false;
 
-    switch(this.usuario.rol){
-      case RolUsuario.PROFESOR:
+    // Primero cargamos todas las entregas
+    this.entregaService.getEntregas(0, 1000, this.sortBy, this.sortDirection).subscribe({
+      next: (page) => {
+        this.entregasOriginales = page.content;
 
-        if(this.usuario.profesorId){
-          this.loadEntregasPendientesCalificacion();
+        // Luego filtramos según el rol
+        this.filtrarEntregasSegunRol();
+        this.loading = false;
+      },
+      error: (err) => {
+        this.error = "Error al cargar las entregas";
+        this.loading = false;
+        console.error("Error: ", err);
+      }
+    });
+  }
+
+  filtrarEntregasSegunRol(): void {
+    if (!this.usuario) return;
+
+    let entregasFiltradas = [...this.entregasOriginales];
+
+    switch (this.usuario.rol) {
+      case RolUsuario.PROFESOR:
+        if (this.usuario.profesorId) {
+          // Filtrar solo entregas de tareas creadas por este profesor
+          entregasFiltradas = this.entregasOriginales.filter(entrega =>
+            entrega.tarea?.profesor?.id === this.usuario!.profesorId
+          );
         }
         break;
 
       case RolUsuario.ALUMNO:
-
-        if(this.usuario.alumnoId){
-          this.loadEntregasAlumno();
+        if (this.usuario.alumnoId) {
+          // Filtrar solo entregas de este alumno
+          entregasFiltradas = this.entregasOriginales.filter(entrega =>
+            entrega.alumno?.id === this.usuario!.alumnoId
+          );
         }
         break;
 
       case RolUsuario.ADMIN:
-
-        this.loadTodasLasEntregas();
+        // Admin ve todas las entregas, no necesita filtrado
+        entregasFiltradas = [...this.entregasOriginales];
         break;
 
       default:
-
-        this.loadTodasLasEntregas();
+        entregasFiltradas = [];
         break;
-
     }
+
+    this.entregas = entregasFiltradas;
+    this.updatePage();
   }
 
-  loadTodasLasEntregas():void{
-    this.entregaService.getEntregas(this.currentPage,this.pageSize,this.sortBy,this.sortDirection).subscribe({
-      next: (page)=>{
-        this.page=page;
-        this.entregas=page.content;
-        this.loading=false;
-      }, error: (err)=>{
-        this.error="Error al cargar las entregas";
-        this.loading= false;
-        console.error("Error_: ", err);
+  // Actualizar información de paginación basada en entregas filtradas
+  updatePage(): void {
+    const totalElements = this.entregas.length;
+    const totalPages = Math.ceil(totalElements / this.pageSize);
+
+    this.page = {
+      content: this.getPaginatedEntregas(),
+      totalElements: totalElements,
+      totalPages: totalPages,
+      size: this.pageSize,
+      number: this.currentPage,
+      first: this.currentPage === 0,
+      last: this.currentPage >= totalPages - 1,
+      empty: totalElements === 0,
+      numberOfElements: this.getPaginatedEntregas().length,
+      pageable: {
+        pageNumber: this.currentPage,
+        pageSize: this.pageSize,
+        offset: this.currentPage * this.pageSize,
+        paged: true,
+        unpaged: false,
+        sort: {
+          empty: false,
+          sorted: true,
+          unsorted: false
+        }
+      },
+      sort: {
+        empty: false,
+        sorted: true,
+        unsorted: false
       }
-    });
+    };
+  }
+
+  getPaginatedEntregas(): EntregaResponseDTO[] {
+    const startIndex = this.currentPage * this.pageSize;
+    const endIndex = startIndex + this.pageSize;
+    return this.entregas.slice(startIndex, endIndex);
   }
 
   loadEntregasPendientesCalificacion(): void {
-    this.entregaService.getEntregasPendientesCalificacion(this.currentPage, this.pageSize, this.sortBy, this.sortDirection).subscribe({
-      next: (page) => {
-        this.page = page;
-        this.entregas = page.content;
-        this.loading = false;
-      },
-      error: (err) => {
-        this.error = 'Error al cargar las entregas pendientes';
-        this.loading = false;
-        console.error('Error:', err);
-      }
-    });
+    if (!this.usuario?.profesorId) return;
+
+    // Filtrar entregas pendientes de calificación del profesor
+    const entregasPendientes = this.entregasOriginales.filter(entrega =>
+      entrega.tarea?.profesor?.id === this.usuario!.profesorId &&
+      entrega.estado === EstadoEntrega.ENTREGADA
+    );
+
+    this.entregas = entregasPendientes;
+    this.updatePage();
   }
 
-  loadEntregasAlumno(): void {
-    this.entregaService.getEntregasByAlumno(this.currentPage, this.pageSize, this.sortBy, this.sortDirection).subscribe({
-      next: (page) => {
-        this.page = page;
-        this.entregas = page.content;
-        this.loading = false;
-      },
-      error: (err) => {
-        this.error = 'Error al cargar las entregas del alumno';
-        this.loading = false;
-        console.error('Error:', err);
-      }
-    });
-  }
-
-  search():void{
-    if(!this.isSearchActive && ! this.estadoFilter){
-      this.loadEntregasSegunRol();
+  search(): void {
+    if (!this.isSearchActive && !this.estadoFilter) {
+      this.filtrarEntregasSegunRol();
       return;
     }
-    this.loading=true;
-    this.error=null;
-    if(!this.isSearchActive){
-      this.currentPage=0;
-    }
-    this.isSearchActive=true;
-    if(this.estadoFilter){
+
+    this.isSearchActive = true;
+
+    if (this.estadoFilter) {
       this.searchByEstado();
-    }else{
-      this.loadEntregasSegunRol();
+    } else {
+      this.filtrarEntregasSegunRol();
     }
   }
 
-  searchByEstado():void{
-    this.loadEntregasSegunRol();
+  searchByEstado(): void {
+    // Primero filtrar por rol, luego por estado
+    this.filtrarEntregasSegunRol();
+
+    if (this.estadoFilter) {
+      this.entregas = this.entregas.filter(entrega =>
+        entrega.estado === this.estadoFilter
+      );
+    }
+
+    this.currentPage = 0; // Resetear a primera página
+    this.updatePage();
   }
 
   onPageChange(page: number): void {
     this.currentPage = page;
-
-    if (this.activeTab === 'pendientes') {
-      this.loadEntregasPendientesCalificacion();
-    } else if (this.isSearchActive) {
-      this.search();
-    } else {
-      this.loadEntregasSegunRol();
-    }
+    this.updatePage();
   }
 
   setActiveTab(tab: 'todas' | 'pendientes' | 'calificadas' | 'vencidas'): void {
@@ -217,9 +262,14 @@ export class ListaEntregasComponent implements OnInit{
 
       if (tab === 'pendientes') {
         this.loadEntregasPendientesCalificacion();
+      } else if (tab === 'calificadas') {
+        this.filtrarEntregasSegunRol();
+        this.entregas = this.entregas.filter(e => e.estado === EstadoEntrega.CALIFICADA);
       } else {
-        this.loadEntregasSegunRol();
+        this.filtrarEntregasSegunRol();
       }
+
+      this.updatePage();
     }
   }
 
@@ -259,8 +309,8 @@ export class ListaEntregasComponent implements OnInit{
   }
 
   //Métodos de navegación y acciones
-  verEntrega(id: number):void{
-    const queryParams= {modo: 'view'};
+  verEntrega(id: number): void {
+    const queryParams = { modo: 'view' };
     this.router.navigate(['/entregas', id], { queryParams });
   }
 
@@ -306,7 +356,7 @@ export class ListaEntregasComponent implements OnInit{
         this.entregaService.deleteEntrega(id).subscribe({
           next: () => {
             this.successMessage = 'Entrega eliminada correctamente';
-            this.loadEntregasSegunRol();
+            this.loadTodasLasEntregasYFiltrar();
             setTimeout(() => this.successMessage = null, 3000);
           },
           error: (err) => {
@@ -335,16 +385,15 @@ export class ListaEntregasComponent implements OnInit{
   }
 
   puedeCalificarEntrega(entrega : EntregaEntity): boolean{
-    if(!this.esProfesor()) return false;
+    if (!this.esProfesor()) return false;
     return entrega.estado === EstadoEntrega.ENTREGADA;
-
   }
 
   puedeEliminarEntrega(): boolean {
     return this.esAdmin();
   }
 
-  getHeaderTitle(): string{
+  getHeaderTitle(): string {
     if (this.profesorId && this.activeTab === 'pendientes') {
       return 'Entregas Pendientes de Calificación';
     } else if (this.alumnoId) {
@@ -357,12 +406,4 @@ export class ListaEntregasComponent implements OnInit{
       return 'Todas las Entregas';
     }
   }
-
 }
-
-
-
-
-
-
-
