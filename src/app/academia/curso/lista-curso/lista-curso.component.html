@@ -2,7 +2,10 @@
   <div class="page-header">
     <div class="header-actions">
       <h1>Listado de Cursos</h1>
-      <button class="btn btn-success" (click)="nuevoCurso()">
+      <button
+        *ngIf="canCreateCurso()"
+        class="btn btn-success"
+        (click)="nuevoCurso()">
         <i class="fa fa-plus"></i> Nuevo Curso
       </button>
     </div>
@@ -140,11 +143,36 @@
             </td>
             <td class="actions-cell">
               <div class="btn-group">
-                <button class="btn-icon btn-view" title="Ver detalles" (click)="verCurso(curso.id!)">👁️</button>
-                <button class="btn-icon btn-edit" title="Editar" (click)="editarCurso(curso.id!)">✏️</button>
-                <button class="btn-icon btn-delete" title="Eliminar" (click)="eliminarCurso(curso.id!)">🗑️</button>
-                <button class="btn-icon btn-add-prof" title="Añadir profesor" (click)="abrirModalProfesor(curso)">👨‍🏫</button>
                 <button
+                  *ngIf="canViewCurso()"
+                  class="btn-icon btn-view"
+                  title="Ver detalles"
+                  (click)="verCurso(curso.id!)">👁️</button>
+
+                <!-- 🔥 EDITAR: Solo ADMIN -->
+                <button
+                  *ngIf="canEditCurso()"
+                  class="btn-icon btn-edit"
+                  title="Editar"
+                  (click)="editarCurso(curso.id!)">✏️</button>
+
+                <!-- 🔥 ELIMINAR: Solo ADMIN -->
+                <button
+                  *ngIf="canDeleteCurso()"
+                  class="btn-icon btn-delete"
+                  title="Eliminar"
+                  (click)="eliminarCurso(curso.id!)">🗑️</button>
+
+                <!-- 🔥 AÑADIR PROFESOR: Solo ADMIN -->
+                <button
+                  *ngIf="canAddProfesorToCurso()"
+                  class="btn-icon btn-add-prof"
+                  title="Añadir profesor"
+                  (click)="abrirModalProfesor(curso)">👨‍🏫</button>
+
+                <!-- 🔥 AÑADIR ALUMNO: ADMIN y PROFESOR -->
+                <button
+                  *ngIf="canAddAlumnoToCurso()"
                   class="btn-icon btn-add-student"
                   title="Añadir alumno"
                   [disabled]="!hasPlazasDisponibles(curso)"
@@ -171,7 +199,7 @@
 </div>
 
 <!-- Modal para añadir profesor -->
-<div class="modal" *ngIf="showProfesorModal" [class.show]="showProfesorModal">
+<div class="modal" *ngIf="showProfesorModal && canAddProfesorToCurso()" [class.show]="showProfesorModal">
   <div class="modal-backdrop" (click)="cerrarModales()"></div>
   <div class="modal-dialog">
     <div class="modal-content">
@@ -217,7 +245,8 @@
 </div>
 
 <!-- Modal para añadir alumno -->
-<div class="modal" *ngIf="showAlumnoModal" [class.show]="showAlumnoModal">
+
+<div class="modal" *ngIf="showAlumnoModal && canAddAlumnoToCurso()" [class.show]="showAlumnoModal">
   <div class="modal-backdrop" (click)="cerrarModales()"></div>
   <div class="modal-dialog">
     <div class="modal-content">

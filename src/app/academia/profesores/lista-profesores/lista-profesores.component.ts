@@ -8,6 +8,7 @@ import { Page } from '../../../interfaces/page';
 import { PaginationComponent } from '../../pagination/pagination/pagination.component';
 import { ActivatedRoute, Route, Router } from '@angular/router';
 import { ProfesorResponseDTO } from '../../../interfaces/profesor-entity';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-profesores',
@@ -40,7 +41,7 @@ export class ProfesoresComponent implements OnInit {
   error: string | null = null;
   activeTab: 'todos' | 'especialidad' = 'todos';
 
-  constructor(private profesorService: ProfesorService, private router : Router, private routes : ActivatedRoute, private usuarioService : UsuarioService) {}
+  constructor(private profesorService: ProfesorService, private router : Router, private routes : ActivatedRoute, private usuarioService : UsuarioService, private authService: AuthService) {}
 
   ngOnInit(): void {
     this.loadProfesores();
@@ -266,6 +267,80 @@ export class ProfesoresComponent implements OnInit {
     this.router.navigate(['/entregas'], {
       queryParams: { profesorId: profesorId, filtro: 'pendientes' }
     });
+  }
+
+  canCreateProfesor(): boolean {
+    return this.authService.isAdmin();
+  }
+
+  /**
+   * Verifica si el usuario puede editar un profesor específico
+   * Pueden editar: ADMIN o el propio profesor
+   */
+  canEditProfesor(profesor: ProfesorResponseDTO): boolean {
+    // Admin siempre puede editar
+    if (this.authService.isAdmin()) {
+      return true;
+    }
+
+    // Si es profesor, solo puede editar su propio perfil
+    if (this.authService.isProfesor()) {
+      const currentUser = this.authService.currentUserValue;
+      return currentUser?.profesorId === profesor.id;
+    }
+
+    return false;
+  }
+
+  /**
+   * Verifica si el usuario puede eliminar un profesor
+   * Solo ADMIN puede eliminar profesores
+   */
+  canDeleteProfesor(): boolean {
+    return this.authService.isAdmin();
+  }
+
+  /**
+   * Verifica si el usuario puede ver detalles de un profesor
+   * Todos los usuarios autenticados pueden ver detalles
+   */
+  canViewProfesor(): boolean {
+    return this.authService.isAuthenticated();
+  }
+
+  /**
+   * Verifica si el usuario puede ver tareas de un profesor
+   * ADMIN, cualquier PROFESOR o el propio profesor
+   */
+  canViewTareasProfesor(profesor: ProfesorResponseDTO): boolean {
+    if (this.authService.isAdmin()) {
+      return true;
+    }
+
+    if (this.authService.isProfesor()) {
+      const currentUser = this.authService.currentUserValue;
+      // Puede ver sus propias tareas o las de otros profesores (colaboración)
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Verifica si el usuario puede ver entregas de un profesor
+   * ADMIN o el propio profesor
+   */
+  canViewEntregasProfesor(profesor: ProfesorResponseDTO): boolean {
+    if (this.authService.isAdmin()) {
+      return true;
+    }
+
+    if (this.authService.isProfesor()) {
+      const currentUser = this.authService.currentUserValue;
+      return currentUser?.profesorId === profesor.id;
+    }
+
+    return false;
   }
 
 }

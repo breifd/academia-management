@@ -1,7 +1,7 @@
 
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { catchError, Observable, tap } from 'rxjs';
 import { UsuarioResponseDTO, RolUsuario, UsuarioCreateDTO, UsuarioDTO } from '../interfaces/usuario';
 
 
@@ -49,6 +49,29 @@ export class UsuarioService {
     return this.http.get<UsuarioResponseDTO>(`${this.apiUrl}/usuarios/alumno/${alumnoId}`);
   }
   checkUsernameExists(username: string): Observable<boolean> {
-  return this.http.get<boolean>(`${this.apiUrl}/check-username/${username}`);
+  console.log('=== CHECK USERNAME REQUEST ===');
+  console.log('Username a verificar:', username);
+  console.log('Token actual:', localStorage.getItem('jwt_token'));
+  console.log('Usuario actual:', localStorage.getItem('current_user'));
+
+  let headers = new HttpHeaders();
+  const token = localStorage.getItem('jwt_token');
+  if (token) {
+    headers= headers.set('Authorization', `Bearer ${token}`);
+    console.log('Header Authorization agregado:', `Bearer ${token.substring(0, 20)}...`);
+  } else {
+    console.log('NO HAY TOKEN DISPONIBLE');
+  }
+
+  return this.http.get<boolean>(`${this.apiUrl}/check-username/${username}`, { headers }).pipe(
+    tap(result => console.log('Resultado del servidor:', result)),
+    catchError(error => {
+      console.error('ERROR en checkUsernameExists:', error);
+      console.log('Status:', error.status);
+      console.log('Error completo:', error);
+      console.log('================================');
+      throw error;
+    })
+  );;
   }
 }

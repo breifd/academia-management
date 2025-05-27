@@ -92,28 +92,28 @@ export class FormTareasComponent implements OnInit {
     this.loadAlumnos();
   }
 
- loadCursos(): void {
-  this.error = null;
-  // Pedimos la lista completa de cursos como DTOs
-  this.cursoService.getCursos(0, 1000, 'id', 'asc').subscribe({
-    next: page => {
-      // page.content es CursoResponseDTO[]
-      if (this.esProfesor() && this.usuario?.profesorId != null) {
-        // Filtramos solo los cursos donde imparte
-        this.cursos = page.content.filter(c =>
-          c.profesores?.some(p => p.id === this.usuario!.profesorId)
-        );
-      } else {
-        // Admin o alumno, tomamos todo
-        this.cursos = page.content;
+  loadCursos(): void {
+    this.error = null;
+    // Pedimos la lista completa de cursos como DTOs
+    this.cursoService.getCursos(0, 1000, 'id', 'asc').subscribe({
+      next: page => {
+        // page.content es CursoResponseDTO[]
+        if (this.esProfesor() && this.usuario?.profesorId != null) {
+          // Filtramos solo los cursos donde imparte
+          this.cursos = page.content.filter(c =>
+            c.profesores?.some(p => p.id === this.usuario!.profesorId)
+          );
+        } else {
+          // Admin o alumno, tomamos todo
+          this.cursos = page.content;
+        }
+      },
+      error: err => {
+        console.error('Error al cargar cursos:', err);
+        this.error = 'No se pudieron cargar los cursos';
       }
-    },
-    error: err => {
-      console.error('Error al cargar cursos:', err);
-      this.error = 'No se pudieron cargar los cursos';
-    }
-  });
-}
+    });
+  }
 
   loadAlumnos(): void {
     this.alumnoService.getAlumnos(0, 1000).subscribe({
@@ -126,10 +126,30 @@ export class FormTareasComponent implements OnInit {
     });
   }
 
+  // Método mejorado para cambio de curso
   onCursoChange(): void {
     const cursoId = this.tareaForm.get('cursoId')?.value;
+
+    // Limpiar la lista de alumnos seleccionados al cambiar de curso
+    this.tareaForm.get('alumnosIds')?.setValue([]);
+
     if (cursoId) {
+      // Buscar el curso seleccionado
       const cursoSeleccionado = this.cursos.find(c => c.id === +cursoId);
+
+      // Verificar si el profesor imparte en ese curso (solo para rol profesor)
+      if (this.esProfesor() && this.usuario?.profesorId) {
+        const profesorEnCurso = cursoSeleccionado?.profesores?.some(p => p.id === this.usuario?.profesorId);
+
+        if (!profesorEnCurso) {
+          this.error = 'No puede crear tareas para un curso en el que no imparte clases.';
+          // Opcional: desactivar el formulario o mostrar una advertencia
+        } else {
+          this.error = null;
+        }
+      }
+
+      // Cargar los alumnos del curso
       if (cursoSeleccionado && cursoSeleccionado.alumnos) {
         this.alumnosDelCurso = cursoSeleccionado.alumnos;
       } else {
@@ -148,7 +168,8 @@ export class FormTareasComponent implements OnInit {
       fechaLimite: [null],
       cursoId: [null, [Validators.required]],
       paraTodosLosAlumnos: [true],
-      alumnosIds: [[]]
+      alumnosIds: [[]],
+      nota: [null, [Validators.min(0), Validators.max(10)]]
     });
   }
 
@@ -260,12 +281,37 @@ export class FormTareasComponent implements OnInit {
   guardar(): void {
     if (this.tareaForm.invalid || this.mode === 'view') {
       this.tareaForm.markAllAsTouched();
+      // Mostrar error específico sobre campos requeridos
+      this.error = 'Por favor complete todos los campos obligatorios.';
       return;
     }
 
     // Validar fechas
     const fechaPublicacion = this.tareaForm.get('fechaPublicacion')?.value;
     const fechaLimite = this.tareaForm.get('fechaLimite')?.value;
+    const cursoId = this.tareaForm.get('cursoId')?.value;
+
+    // Validación específica: asegurarse de que se seleccionó un curso
+    if (!cursoId) {
+      this.error = 'Debe seleccionar un curso para la tarea.';
+      return;
+    }
+
+    // Validar que el profesor imparte en ese curso (sólo para profesores)
+    if (this.esProfesor() && this.usuario?.profesorId) {
+      const cursoSeleccionado = this.cursos.find(c => c.id === +cursoId);
+      if (!cursoSeleccionado) {
+        this.error = 'El curso seleccionado no existe.';
+        return;
+      }
+
+      // Verificar si el profesor pertenece al curso seleccionado
+      const profesorEnCurso = cursoSeleccionado.profesores?.some(p => p.id === this.usuario?.profesorId);
+      if (!profesorEnCurso) {
+        this.error = 'No puede crear tareas para un curso en el que no imparte clases.';
+        return;
+      }
+    }
 
     if (fechaPublicacion && fechaLimite) {
       const fechaPublicacionDate = new Date(fechaPublicacion);
@@ -291,6 +337,9 @@ export class FormTareasComponent implements OnInit {
       alumnosIds: this.tareaForm.get('alumnosIds')?.value || []
     };
 
+    // Log para depuración
+    console.log('Enviando datos de tarea:', JSON.stringify(tareaData));
+
     if (this.mode === 'edit' && this.tareaID) {
       this.tareaService.updateTarea(this.tareaID, tareaData).subscribe({
         next: () => {
@@ -305,7 +354,12 @@ export class FormTareasComponent implements OnInit {
           }
         },
         error: (err) => {
-          this.error = 'Error al actualizar la tarea. Inténtelo de nuevo más tarde.';
+          // Mostrar mensaje de error más específico si está disponible
+          if (err.error && err.error.error) {
+            this.error = err.error.error;
+          } else {
+            this.error = 'Error al actualizar la tarea. Inténtelo de nuevo más tarde.';
+          }
           this.loading = false;
           console.error('Error al actualizar la tarea:', err);
         }
@@ -325,7 +379,12 @@ export class FormTareasComponent implements OnInit {
           }
         },
         error: (err) => {
-          this.error = 'Error al crear la tarea. Inténtelo de nuevo más tarde.';
+          // Extraer mensaje de error del backend si está disponible
+          if (err.error && err.error.error) {
+            this.error = err.error.error;
+          } else {
+            this.error = 'Error al crear la tarea. Inténtelo de nuevo más tarde.';
+          }
           this.loading = false;
           console.error('Error al crear la tarea:', err);
         }
@@ -341,6 +400,73 @@ export class FormTareasComponent implements OnInit {
     return this.mode === 'view' ? 'Ver' : this.mode === 'edit' ? 'Editar' : 'Crear';
   }
 
+  // Verifica si un alumno está seleccionado (para el checkbox)
+  esAlumnoSeleccionado(alumnoId: number): boolean {
+    const alumnosIds = this.tareaForm.get('alumnosIds')?.value as number[] || [];
+    return alumnosIds.includes(alumnoId);
+  }
+
+  // Maneja el cambio en la selección de un alumno
+  toggleSeleccionAlumno(alumnoId: number): void {
+    const alumnosIdsControl = this.tareaForm.get('alumnosIds');
+    let alumnosIds = alumnosIdsControl?.value as number[] || [];
+
+    if (this.esAlumnoSeleccionado(alumnoId)) {
+      // Si ya está seleccionado, lo quitamos
+      alumnosIds = alumnosIds.filter(id => id !== alumnoId);
+    } else {
+      // Si no está seleccionado, lo añadimos
+      alumnosIds.push(alumnoId);
+    }
+
+    alumnosIdsControl?.setValue(alumnosIds);
+  }
+
+  // Verifica si un curso pertenece al profesor actual
+  esCursoDelProfesor(curso: any): boolean {
+    if (!curso || !curso.profesores || !this.usuario?.profesorId) {
+      return false;
+    }
+
+    for (let i = 0; i < curso.profesores.length; i++) {
+      if (curso.profesores[i].id === this.usuario.profesorId) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  // Verifica si el profesor actual tiene cursos asignados
+  tieneProfesorCursosAsignados(): boolean {
+    if (!this.cursos || !this.usuario?.profesorId) {
+      return false;
+    }
+
+    for (let i = 0; i < this.cursos.length; i++) {
+      if (this.esCursoDelProfesor(this.cursos[i])) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  // Mejorar el método para cuando cambia paraTodosLosAlumnos
+  onParaTodosChange(): void {
+    const paraTodos = this.tareaForm.get('paraTodosLosAlumnos')?.value;
+    if (paraTodos) {
+      // Si es para todos, limpiamos la selección individual
+      this.tareaForm.get('alumnosIds')?.setValue([]);
+    } else {
+      // Verificar si hay alumnos en el curso
+      if (this.alumnosDelCurso.length === 0) {
+        // Si no hay alumnos, mostrar advertencia
+        this.error = 'El curso seleccionado no tiene alumnos matriculados.';
+      }
+    }
+  }
+
   // Métodos de utilidad
   esProfesor(): boolean {
     return this.usuario?.rol === RolUsuario.PROFESOR;
@@ -352,12 +478,5 @@ export class FormTareasComponent implements OnInit {
 
   esAdmin(): boolean {
     return this.usuario?.rol === RolUsuario.ADMIN;
-  }
-
-  onParaTodosChange(): void {
-    const paraTodos = this.tareaForm.get('paraTodosLosAlumnos')?.value;
-    if (paraTodos) {
-      this.tareaForm.get('alumnosIds')?.setValue([]);
-    }
   }
 }

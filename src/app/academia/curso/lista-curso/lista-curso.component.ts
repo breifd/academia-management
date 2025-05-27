@@ -14,6 +14,7 @@ import { fromReadableStreamLike } from 'rxjs/internal/observable/innerFrom';
 import { CursoResponseDTO } from '../../../interfaces/curso-entity';
 import { ProfesorSimpleDTO } from '../../../interfaces/profesor-entity';
 import { AlumnoSimpleDTO } from '../../../interfaces/alumno-entity';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-lista-curso',
@@ -62,7 +63,7 @@ export class ListaCursoComponent implements OnInit{
    // Estado de procesamiento
   processingAction: boolean = false;
 
-  constructor(private cursoService: CursoService, private router : Router, private alumnoService : AlumnoService, private profesorService: ProfesorService) {
+  constructor(private cursoService: CursoService, private router : Router, private alumnoService : AlumnoService, private profesorService: ProfesorService, private authService: AuthService) {
     this.niveles = this.cursoService.getNiveles();
   }
 
@@ -399,5 +400,48 @@ export class ListaCursoComponent implements OnInit{
         this.error = 'Error al matricular al alumno en el curso';
       }
     });
+  }
+  canCreateCurso(): boolean {
+    return this.authService.isAdmin();
+  }
+
+  /**
+   * Verifica si el usuario puede editar un curso
+   * Solo ADMIN puede editar cursos
+   */
+  canEditCurso(): boolean {
+    return this.authService.isAdmin();
+  }
+
+  /**
+   * Verifica si el usuario puede eliminar un curso
+   * Solo ADMIN puede eliminar cursos
+   */
+  canDeleteCurso(): boolean {
+    return this.authService.isAdmin();
+  }
+
+  /**
+   * Verifica si el usuario puede ver detalles de un curso
+   * Todos los usuarios autenticados pueden ver cursos
+   */
+  canViewCurso(): boolean {
+    return this.authService.isAuthenticated();
+  }
+
+  /**
+   * Verifica si el usuario puede añadir profesores a un curso
+   * Solo ADMIN puede añadir profesores
+   */
+  canAddProfesorToCurso(): boolean {
+    return this.authService.isAdmin();
+  }
+
+  /**
+   * Verifica si el usuario puede añadir alumnos a un curso
+   * ADMIN y PROFESOR pueden añadir alumnos
+   */
+  canAddAlumnoToCurso(): boolean {
+    return this.authService.isAdmin() || this.authService.isProfesor();
   }
 }

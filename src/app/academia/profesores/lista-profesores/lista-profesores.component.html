@@ -2,7 +2,10 @@
   <div class="page-header">
       <div class="header-actions">
       <h1>Listado de Profesores</h1>
-      <button class="btn btn-success" (click)="nuevoProfesor()">
+      <button
+        *ngIf="canCreateProfesor()"
+        class="btn btn-success"
+        (click)="nuevoProfesor()">
         <i class="fa fa-plus"></i> Nuevo Profesor
       </button>
     </div>
@@ -115,12 +118,41 @@
             <td>{{ profesor.email || 'N/A' }}</td>
             <td>{{ profesor.telefono || 'N/A' }}</td>
            <td class="actions-cell">
-              <button class="btn-icon btn-view" title="Ver detalles" (click)="verProfesor(profesor.id!)">👁️</button>
-              <button class="btn-icon btn-edit" title="Editar" (click)="editarProfesor(profesor.id!)">✏️</button>
-              <button class="btn-icon btn-delete" title="Eliminar" (click)="eliminarProfesor(profesor.id!)">🗑️</button>
+              <!-- 🔥 VER: Todos pueden ver -->
+            <button
+              *ngIf="canViewProfesor()"
+              class="btn-icon btn-view"
+              title="Ver detalles"
+              (click)="verProfesor(profesor.id!)">👁️</button>
 
-              <button class="btn-icon btn-tasks" title="Ver tareas del profesor" (click)="verTareasProfesor(profesor.id!)">📝</button>
-              <button class="btn-icon btn-submissions" title="Ver entregas pendientes" (click)="verEntregasProfesor(profesor.id!)">📋</button>
+            <!-- 🔥 EDITAR: Solo ADMIN o el propio profesor -->
+            <button
+              *ngIf="canEditProfesor(profesor)"
+              class="btn-icon btn-edit"
+              title="Editar"
+              (click)="editarProfesor(profesor.id!)">✏️</button>
+
+            <!-- 🔥 ELIMINAR: Solo ADMIN -->
+            <button
+              *ngIf="canDeleteProfesor()"
+              class="btn-icon btn-delete"
+              title="Eliminar"
+              (click)="eliminarProfesor(profesor.id!)">🗑️</button>
+
+            <!-- 🔥 VER TAREAS: ADMIN o cualquier PROFESOR -->
+            <button
+              *ngIf="canViewTareasProfesor(profesor)"
+              class="btn-icon btn-tasks"
+              title="Ver tareas del profesor"
+              (click)="verTareasProfesor(profesor.id!)">📝</button>
+
+            <!-- 🔥 VER ENTREGAS: ADMIN o el propio profesor -->
+            <button
+              *ngIf="canViewEntregasProfesor(profesor)"
+              class="btn-icon btn-submissions"
+              title="Ver entregas pendientes"
+              (click)="verEntregasProfesor(profesor.id!)">📋
+            </button>
            </td>
           </tr>
         </tbody>

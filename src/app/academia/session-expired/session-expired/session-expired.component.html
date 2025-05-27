@@ -1,0 +1,22 @@
+<div class="session-expired-container">
+  <div class="session-expired-card">
+    <div class="icon">
+      🕐
+    </div>
+    <h2>Sesión Expirada</h2>
+    <p>Su sesión ha expirado por motivos de seguridad.</p>
+    <p>Por favor, inicie sesión nuevamente para continuar.</p>
+
+    <div class="countdown" *ngIf="countdown > 0">
+      <p>Redirigiendo automáticamente en {{ countdown }} segundos...</p>
+    </div>
+
+    <div class="actions">
+      <button
+        class="btn btn-primary"
+        (click)="redirectToLogin()">
+        Iniciar Sesión
+      </button>
+    </div>
+  </div>
+</div>

@@ -39,6 +39,40 @@
           </div>
         </div>
 
+        <!-- Curso -->
+        <div style="margin-bottom: 16px; grid-column: span 2;">
+          <label for="cursoId" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+            Curso <span style="color: #e53935;">*</span>
+          </label>
+          <select
+            id="cursoId"
+            formControlName="cursoId"
+            (change)="onCursoChange()"
+            style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box;"
+            [ngClass]="{'error-border': tareaForm.get('cursoId')?.invalid && tareaForm.get('cursoId')?.touched}">
+            <option [ngValue]="null">Seleccione un curso</option>
+            <option *ngFor="let curso of cursos" [ngValue]="curso.id">
+              {{ curso.nombre }} - {{ curso.nivel || 'Sin nivel' }}
+              <!-- Usamos *ngIf en lugar de operador ternario con función flecha -->
+              <ng-container *ngIf="esProfesor() && esCursoDelProfesor(curso)">
+                (Imparto este curso)
+              </ng-container>
+            </option>
+          </select>
+          <div *ngIf="tareaForm.get('cursoId')?.invalid && tareaForm.get('cursoId')?.touched"
+              style="color: #e53935; font-size: 13px; margin-top: 5px;">
+            Debe seleccionar un curso
+          </div>
+          <div *ngIf="cursos.length === 0"
+              style="color: #ff9800; font-size: 13px; margin-top: 5px;">
+            No hay cursos disponibles. Póngase en contacto con un administrador.
+          </div>
+          <div *ngIf="esProfesor() && cursos.length > 0 && !tieneProfesorCursosAsignados()"
+              style="color: #ff9800; font-size: 13px; margin-top: 5px;">
+            No imparte clases en ningún curso. Póngase en contacto con un administrador.
+          </div>
+        </div>
+
         <!-- Fecha de Publicación -->
         <div style="margin-bottom: 16px;">
           <label for="fechaPublicacion" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
@@ -61,28 +95,52 @@
             id="fechaLimite"
             formControlName="fechaLimite"
             style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box;">
-        </div>
-        <div *ngIf="tareaForm.get('fechaLimite')?.errors?.['fechaInvalida']" style="color: #e53935; font-size: 13px; margin-top: 5px;">
-          La fecha límite no puede ser anterior a la fecha de publicación
+          <div *ngIf="tareaForm.get('fechaLimite')?.errors?.['fechaInvalida']" style="color: #e53935; font-size: 13px; margin-top: 5px;">
+            La fecha límite no puede ser anterior a la fecha de publicación
+          </div>
         </div>
 
-        <!-- Nota -->
-        <div style="margin-bottom: 16px;">
-          <label for="nota" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
-            Nota (0-10)
-          </label>
-          <input
-            type="number"
-            id="nota"
-            formControlName="nota"
-            min="0"
-            max="10"
-            step="0.1"
-            style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box;"
-            [ngStyle]="{'border-color': tareaForm.get('nota')?.invalid && tareaForm.get('nota')?.touched ? '#e53935' : '#ddd'}">
-          <div *ngIf="tareaForm.get('nota')?.invalid && tareaForm.get('nota')?.touched" style="color: #e53935; font-size: 13px; margin-top: 5px;">
-            La nota debe estar entre 0 y 10
+        <!-- Tipo de Asignación -->
+        <div style="margin-bottom: 16px; grid-column: span 2;">
+          <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            <label style="display: block; font-weight: 500; color: #333; margin-right: 10px;">
+              Asignación de alumnos
+            </label>
+            <div style="display: flex; align-items: center;">
+              <input
+                type="checkbox"
+                id="paraTodosLosAlumnos"
+                formControlName="paraTodosLosAlumnos"
+                (change)="onParaTodosChange()"
+                style="margin-right: 5px;">
+              <label for="paraTodosLosAlumnos" style="margin: 0; cursor: pointer;">
+                Asignar a todos los alumnos del curso
+              </label>
+            </div>
           </div>
+        </div>
+
+        <!-- Selección de Alumnos Específicos -->
+        <div *ngIf="!tareaForm.get('paraTodosLosAlumnos')?.value && tareaForm.get('cursoId')?.value">
+        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+          Seleccione alumnos específicos
+        </label>
+        <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 6px; padding: 10px;">
+          <div *ngIf="alumnosDelCurso.length === 0" style="color: #666; font-style: italic;">
+            No hay alumnos matriculados en este curso
+          </div>
+          <div *ngFor="let alumno of alumnosDelCurso" style="margin-bottom: 5px;">
+            <label style="display: flex; align-items: center; cursor: pointer;">
+              <input
+                type="checkbox"
+                [value]="alumno.id"
+                [checked]="esAlumnoSeleccionado(alumno.id)"
+                (change)="toggleSeleccionAlumno(alumno.id)"
+                style="margin-right: 10px;">
+              {{ alumno.nombre }} {{ alumno.apellido }}
+            </label>
+          </div>
+        </div>
         </div>
 
         <!-- Documento (span 2 columnas) -->

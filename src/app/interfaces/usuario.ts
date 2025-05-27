@@ -67,10 +67,28 @@ export interface LoginResponse {
   profesorId?: number;
   alumnoId?: number;
   errorCode?: string;
+  token?: string;
+  tokenType?: string;
 }
 
 // Para solicitudes de login
 export interface LoginRequest {
   username: string;
   password: string;
+}
+
+// Para decodificar el payload del JWT
+export interface JwtPayload {
+  sub: string; // username
+  rol: string;
+  profesorId?: number;
+  alumnoId?: number;
+  iat: number; // issued at
+  exp: number; // expiration time
+}
+
+// Para respuestas de refresh token
+export interface RefreshTokenResponse {
+  token: string;
+  tokenType: string;
 }

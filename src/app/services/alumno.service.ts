@@ -66,12 +66,17 @@ export class AlumnoService {
   }
 
   createAlumno(alumno: AlumnoCreateDTO): Observable<AlumnoResponseDTO> {
+    // Validar que incluya datos de usuario
+    if (!alumno.usuario) {
+      throw new Error('Los datos de usuario son obligatorios para crear un alumno');
+    }
     return this.http.post<AlumnoResponseDTO>(this.apiUrl, alumno);
   }
 
+
   // Actualizar un alumno existente
-  updateAlumno(id: number, alumno: AlumnoEntity): Observable<AlumnoEntity> {
-    return this.http.put<AlumnoEntity>(`${this.apiUrl}/${id}`, alumno);
+  updateAlumno(id: number, alumno: AlumnoCreateDTO): Observable<AlumnoCreateDTO> {
+    return this.http.put<AlumnoCreateDTO>(`${this.apiUrl}/${id}`, alumno);
   }
 
   // Eliminar un alumno
@@ -79,9 +84,6 @@ export class AlumnoService {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 
-   createAlumnoWithUser(alumno: AlumnoCreateDTO): Observable<AlumnoResponseDTO> {
-    return this.http.post<AlumnoResponseDTO>(`${this.apiUrl}/con-usuario`, alumno);
-  }
 
   // Actualizar alumno con opción de sincronizar usuario
   updateAlumnoWithSync(id: number, alumno: AlumnoCreateDTO, syncUsuario: boolean = false): Observable<AlumnoResponseDTO> {
@@ -89,5 +91,29 @@ export class AlumnoService {
     // Si syncUsuario es true, se agrega el parámetro a la solicitud
     let params = new HttpParams().set('syncUsuario', syncUsuario.toString());
     return this.http.put<AlumnoResponseDTO>(`${this.apiUrl}/${id}`, alumno, { params });
+  }
+
+  validateAlumnoData(alumno: AlumnoCreateDTO): string | null {
+    if (!alumno.nombre || alumno.nombre.trim().length === 0) {
+      return 'El nombre es obligatorio';
+    }
+
+    if (!alumno.apellido || alumno.apellido.trim().length === 0) {
+      return 'El apellido es obligatorio';
+    }
+
+    if (!alumno.usuario) {
+      return 'Los datos de usuario son obligatorios';
+    }
+
+    if (!alumno.usuario.username || alumno.usuario.username.trim().length < 4) {
+      return 'El nombre de usuario debe tener al menos 4 caracteres';
+    }
+
+    if (!alumno.usuario.password || alumno.usuario.password.trim().length < 6) {
+      return 'La contraseña debe tener al menos 6 caracteres';
+    }
+
+    return null; // Sin errores
   }
 }

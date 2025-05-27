@@ -8,7 +8,7 @@ import { UsuarioService } from '../../../services/usuario.service';
 
 import { debounceTime, distinctUntilChanged, of, Subject, switchMap, takeUntil } from 'rxjs';
 import { LoginResponse, RolUsuario, UsuarioCreateDTO, UsuarioDTO, UsuarioResponseDTO } from '../../../interfaces/usuario';
-import { AlumnoResponseDTO } from '../../../interfaces/alumno-entity';
+import { AlumnoCreateDTO, AlumnoResponseDTO } from '../../../interfaces/alumno-entity';
 
 export type FormMode = 'view' | 'edit' | 'crear';
 
@@ -277,7 +277,7 @@ export class FormAlumnosComponent implements OnInit {
     this.error = null;
     this.successMessage = null;
 
-    const alumnoData: AlumnoResponseDTO = {
+    const alumnoData: AlumnoCreateDTO = {
       ...this.alumnoForm.value
     };
 
@@ -286,12 +286,18 @@ export class FormAlumnosComponent implements OnInit {
       const usuarioData: UsuarioCreateDTO = {
         username: this.usuarioForm.get('username')?.value,
         password: this.usuarioForm.get('password')?.value,
-        nombre: this.usuarioForm.get('usarMismoNombre')?.value ? alumnoData.nombre : '',
-        apellido: this.usuarioForm.get('usarMismoNombre')?.value ? alumnoData.apellido : '',
+        nombre: this.usuarioForm.get('usarMismoNombre')?.value ? this.alumnoForm.get('nombre')?.value : '',
+        apellido: this.usuarioForm.get('usarMismoNombre')?.value ? this.alumnoForm.get('apellido')?.value : '',
         rol: RolUsuario.ALUMNO
       };
 
-      this.alumnoService.createAlumnoWithUser(alumnoData).subscribe({
+      const alumnoData: AlumnoCreateDTO = {
+      ...this.alumnoForm.value,
+      usuario: usuarioData
+    };
+
+
+      this.alumnoService.createAlumno(alumnoData).subscribe({
         next: () => {
           this.successMessage = 'Alumno creado correctamente';
           this.loading = false;
@@ -389,17 +395,31 @@ export class FormAlumnosComponent implements OnInit {
       this.usuarioForm.disable();
     } else {
       this.alumnoForm.enable();
-      if (this.crearUsuario || this.mode === 'crear') {
+       // CAMBIO: Siempre habilitar usuario form en crear, y en edit si no existe usuario
+      if (this.mode === 'crear' || !this.usuarioExistente) {
         this.usuarioForm.enable();
+      } else {
+        // En edit con usuario existente, solo habilitar la opción de sincronización
+        this.usuarioForm.get('usarMismoNombre')?.enable();
+        this.usuarioForm.get('username')?.disable();
+        this.usuarioForm.get('password')?.disable();
+        this.usuarioForm.get('confirmarPassword')?.disable();
       }
     }
   }
-
   cancelar(): void {
     this.router.navigate(['/alumnos']);
   }
 
   getMode(): string {
     return this.mode === 'view' ? 'Ver' : this.mode === 'edit' ? 'Editar' : 'Crear';
+  }
+   shouldShowUsuarioFields(): boolean {
+    return this.mode === 'crear' || (this.mode === 'edit' && !this.usuarioExistente);
+  }
+
+  // HELPER: Determinar si debe mostrar solo sincronización
+  shouldShowSyncOnly(): boolean {
+    return this.mode === 'edit' && this.usuarioExistente !== null;
   }
 }
