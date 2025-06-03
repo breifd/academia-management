@@ -1,7 +1,21 @@
 <div class="entregas-container">
   <div class="page-header">
     <div class="header-actions">
+
+    </div>
+  </div>
+
+
+  <div class="page-header">
+    <div class="header-actions">
       <h1>{{ getHeaderTitle() }}</h1>
+      <!-- ✅ BOTÓN PARA REGRESAR A TAREAS -->
+      <button *ngIf="tareaId" (click)="router.navigate(['/tareas'])" class="btn btn-secondary">
+        ← Volver a Tareas
+      </button>
+      <button *ngIf="alumnoId" (click)="router.navigate(['/alumnos'])" class="btn btn-secondary">
+        ← Volver a Alumnos
+      </button>
     </div>
   </div>
 
@@ -11,7 +25,8 @@
         class="tab-button"
         [class.active]="activeTab === 'todas'"
         (click)="setActiveTab('todas')">
-        <span *ngIf="esProfesor()">Todas mis entregas</span>
+        <span *ngIf="esProfesor() && !tareaId">Todas mis entregas</span>
+        <span *ngIf="esProfesor() && tareaId">Todas las entregas</span>
         <span *ngIf="esAlumno()">Todas mis entregas</span>
         <span *ngIf="esAdmin()">Todas las entregas</span>
       </button>
@@ -108,13 +123,21 @@
                 {{ getEstadoTexto(entrega.estado) }}
               </span>
             </td>
-            <td>
-              <span *ngIf="estaCalificada(entrega)" class="nota-calificada">
-                {{ formatNota(entrega) }}
-              </span>
-              <span *ngIf="!estaCalificada(entrega)" class="nota-pendiente">
-                Sin calificar
-              </span>
+            <td class="col-nota">
+              <div class="nota-container">
+                <span
+                  [class]="'nota-badge ' + (entregaService.esEntregaAutomaticaPorVencimiento(entrega) ? 'nota-automatica' : 'nota-normal')"
+                  [style.background-color]="getEstadoColorDetallado(entrega)">
+                  {{ entregaService.formatNota(entrega) }}
+                </span>
+
+                <!-- ✅ Indicador visual para entregas automáticas -->
+                <div *ngIf="entregaService.esEntregaAutomaticaPorVencimiento(entrega)"
+                    class="indicador-automatica"
+                    title="Entrega generada automáticamente por vencimiento">
+                  🤖 Automática
+                </div>
+              </div>
             </td>
             <td>
               <div *ngIf="tieneDocumento(entrega)">
@@ -123,6 +146,13 @@
                   class="btn-icon btn-download"
                   title="Descargar documento"
                   (click)="descargarDocumento(entrega.id!)">📥</button>
+              </div>
+              <div *ngIf="tieneDocumentoProfesor(entrega)">
+                <span class="badge badge-info">📄 Documento del profesor</span>
+                <button
+                  class="btn-icon btn-download"
+                  title="Descargar documento del profesor"
+                  (click)="descargarDocumentoProfesor(entrega.id!)">📥</button>
               </div>
               <span *ngIf="!tieneDocumento(entrega)" class="badge badge-warning">Sin documento</span>
             </td>
@@ -133,19 +163,24 @@
                 title="Ver detalles"
                 (click)="verEntrega(entrega.id!)">👁️</button>
 
-              <!-- Calificar (solo profesores) -->
+              <!-- ✅ Calificar entrega (solo profesores) -->
               <button
                 *ngIf="puedeCalificarEntrega(entrega)"
                 class="btn-icon btn-grade"
                 title="Calificar entrega"
-                (click)="calificarEntrega(entrega.id!)">⭐</button>
+                (click)="calificarEntrega(entrega.id!)"
+                style="background-color: #4caf50; color: white; margin-left: 5px;">⭐</button>
 
-              <!-- Editar (solo admin) -->
+              <!-- ✅ ACTUALIZADO: Editar (admin Y alumnos para sus entregas) -->
               <button
-                *ngIf="puedeEditarEntrega()"
+                *ngIf="puedeEditarEntrega(entrega)"
                 class="btn-icon btn-edit"
-                title="Editar"
-                (click)="editarEntrega(entrega.id!)">✏️</button>
+                [title]="esAlumno() ? 'Editar mi entrega' : 'Editar entrega'"
+                (click)="editarEntrega(entrega.id!)"
+                [style.background-color]="esAlumno() ? '#2196f3' : '#ff9800'"
+                style="color: white; margin-left: 5px;">
+                {{ esAlumno() ? '📝' : '✏️' }}
+              </button>
 
               <!-- Eliminar (solo admin) -->
               <button

@@ -24,8 +24,23 @@ export class EntregaService {
     return this.http.get<Page<EntregaResponseDTO>>(this.apiUrl, { params });
   }
 
+  updateEntrega(id: number, entregaDTO: EntregaCreateDTO): Observable<EntregaResponseDTO> {
+    return this.http.put<EntregaResponseDTO>(`${this.apiUrl}/${id}`, entregaDTO);
+  }
+
   getEntregaById(id: number): Observable<EntregaResponseDTO> {
     return this.http.get<EntregaResponseDTO>(`${this.apiUrl}/${id}`);
+  }
+
+  // Obtener todas las entregas de un profesor
+  getEntregasByProfesor(profesorId: number, page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<EntregaResponseDTO>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString())
+      .set('sort', sort)
+      .set('direction', direction);
+
+    return this.http.get<Page<EntregaResponseDTO>>(`${this.apiUrl}/profesor/${profesorId}`, { params });
   }
 
   // Crear una nueva entrega
@@ -150,22 +165,128 @@ export class EntregaService {
   }
 
   // Verificar si una entrega está calificada
+ // REEMPLAZAR el método estaCalificada() existente por este:
   estaCalificada(entrega: EntregaResponseDTO): boolean {
+    // ✅ NUEVO: Las entregas fuera de plazo con nota 0 se consideran "calificadas automáticamente"
+    if (entrega.estado === EstadoEntrega.FUERA_PLAZO && entrega.nota === 0) {
+      return true;
+    }
+
+    // Lógica original para entregas normalmente calificadas
     return entrega.estado === EstadoEntrega.CALIFICADA &&
-           entrega.nota !== undefined &&
-           entrega.nota !== null;
+          entrega.nota !== undefined &&
+          entrega.nota !== null;
   }
 
   // Formatear nota
   formatNota(entrega: EntregaResponseDTO): string {
-    if (entrega.nota === undefined || entrega.nota === null) {
-      return 'Sin calificar';
+    // ✅ NUEVO: Si es una entrega fuera de plazo con nota 0, mostrar la nota
+    if (entrega.estado === EstadoEntrega.FUERA_PLAZO && entrega.nota === 0) {
+      return '0.0/10';
     }
-    return entrega.nota.toFixed(1) + '/10';
+
+    // ✅ NUEVO: Si tiene nota (incluye nota 0 normal), mostrarla
+    if (entrega.nota !== undefined && entrega.nota !== null) {
+      return entrega.nota.toFixed(1) + '/10';
+    }
+
+    // Solo mostrar "Sin calificar" si realmente no tiene nota
+    return 'Sin calificar';
   }
 
   // Verificar si una entrega está fuera de plazo
   estaFueraDePlazo(entrega: EntregaResponseDTO): boolean {
-    return entrega.estado === EstadoEntrega.FUERA_PLAZO;
+    return !!(entrega.estado === EstadoEntrega.FUERA_PLAZO);
   }
+
+
+  puedeEditarEntrega(entrega: EntregaResponseDTO, tarea?: any): boolean {
+    // No se puede editar si está calificada
+    if (entrega.estado === EstadoEntrega.CALIFICADA) {
+      return false;
+    }
+
+    // No se puede editar si está fuera de plazo
+    if (entrega.estado === EstadoEntrega.FUERA_PLAZO) {
+      return false;
+    }
+
+    // Verificar fecha límite si tenemos la tarea
+    if (tarea?.fechaLimite) {
+      return new Date(tarea.fechaLimite) >= new Date();
+    }
+
+    // Por defecto, permitir edición para estados PENDIENTE y ENTREGADA
+    return entrega.estado === EstadoEntrega.PENDIENTE ||
+          entrega.estado === EstadoEntrega.ENTREGADA;
+  }
+
+  getEntregasByTarea(tareaId: number, page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<EntregaResponseDTO>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString())
+      .set('sort', sort)
+      .set('direction', direction);
+
+    return this.http.get<Page<EntregaResponseDTO>>(`${this.apiUrl}/tarea/${tareaId}`, { params });
+  }
+
+  // Método para verificar si una entrega es automática por vencimiento
+  esEntregaAutomaticaPorVencimiento(entrega: EntregaResponseDTO): boolean {
+    return entrega.estado === EstadoEntrega.FUERA_PLAZO &&
+         entrega.nota === 0 &&
+         entrega.comentarios !== undefined &&
+         entrega.comentarios.includes('ENTREGA FUERA DE PLAZO');
+  }
+
+  // Método para obtener texto de estado más detallado
+  getEstadoTextoDetallado(estado: EstadoEntrega, entrega: EntregaResponseDTO): string {
+    switch (estado) {
+      case EstadoEntrega.PENDIENTE:
+        return 'Pendiente de entrega';
+      case EstadoEntrega.ENTREGADA:
+        return 'Entregada - Pendiente calificación';
+      case EstadoEntrega.CALIFICADA:
+        return 'Calificada';
+      case EstadoEntrega.FUERA_PLAZO:
+        if (this.esEntregaAutomaticaPorVencimiento(entrega)) {
+          return 'Vencida - Penalizada automáticamente';
+        }
+        return 'Entregada fuera de plazo';
+      default:
+        return 'Estado desconocido';
+    }
+  }
+
+  // Calificar entrega con documento opcional
+  calificarEntregaConDocumento(id: number, calificacion: CalificacionDTO, documento?: File): Observable<EntregaResponseDTO> {
+    const formData = new FormData();
+    formData.append('calificacion', JSON.stringify(calificacion));
+
+    if (documento) {
+      formData.append('documentoProfesor', documento);
+    }
+    return this.http.post<EntregaResponseDTO>(`${this.apiUrl}/${id}/calificar-con-documento`, formData);
+  }
+
+  // Descargar documento del profesor
+  downloadDocumentoProfesor(id: number): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/${id}/documento-profesor`, {
+      responseType: 'blob'
+    });
+  }
+
+  // Verificar si una entrega tiene documento del profesor
+  tieneDocumentoProfesor(entrega: EntregaResponseDTO): boolean {
+    return entrega.nombreDocumentoProfesor !== undefined &&
+          entrega.nombreDocumentoProfesor !== null &&
+          entrega.nombreDocumentoProfesor !== '';
+  }
+
+  verificarEntregaExistenteLocal(tareaId: number, entregas: EntregaResponseDTO[]): boolean {
+    return entregas.some(entrega => entrega.tarea?.id === tareaId);
+  }
+
+
+
 }

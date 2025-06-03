@@ -56,4 +56,6 @@ export interface TareaSimpleDTO {
   nombre: string;
   fechaLimite?: string;
   paraTodosLosAlumnos: boolean;
+  profesor?: ProfesorSimpleDTO;
+  curso?: CursoSimpleDTO;
 }

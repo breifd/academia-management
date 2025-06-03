@@ -1,37 +1,71 @@
-import { Injectable } from '@angular/core';
-import { HttpInterceptor, HttpRequest, HttpHandler, HttpEvent } from '@angular/common/http';
-import { Observable } from 'rxjs';
+// jwt-interceptor-functional.ts - Interceptor funcional mejorado
 
-@Injectable()
-export class JwtInterceptor implements HttpInterceptor {
+import { HttpInterceptorFn, HttpRequest, HttpHandlerFn } from '@angular/common/http';
 
-  intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-    // Log de debug - SIEMPRE debe aparecer si el interceptor funciona
-    console.log('🚨 [JWT INTERCEPTOR] ¡¡¡INTERCEPTOR SE ESTÁ EJECUTANDO!!! URL:', req.url);
+export const jwtInterceptor: HttpInterceptorFn = (
+  req: HttpRequest<any>,
+  next: HttpHandlerFn
+) => {
+  console.log('🚨🚨🚨 [JWT INTERCEPTOR FUNCIONAL] Interceptando:', req.url);
 
-    // Verificar token
-    const token = localStorage.getItem('jwt_token');
+  // Rutas que NO necesitan token
+  const publicRoutes = [
+    '/api/login',
+    '/api/register',
+    '/api/public',
+    '/api/debug-login',
+    '/api/test-auth',
+    '/api/bcrypt-info'
+  ];
 
-    if (token) {
-      console.log('✅ [JWT INTERCEPTOR] Token encontrado, longitud:', token.length);
-      console.log('🔑 [JWT INTERCEPTOR] Primeros 20 caracteres:', token.substring(0, 20) + '...');
+  const isPublicRoute = publicRoutes.some(route => req.url.includes(route));
 
-      // Crear nueva request con Authorization header
-      const authReq = req.clone({
-        setHeaders: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+  if (isPublicRoute) {
+    console.log('🟢 [JWT INTERCEPTOR] Ruta pública, sin token necesario');
+    return next(req);
+  }
 
-      console.log('📤 [JWT INTERCEPTOR] Request enviada CON Authorization header');
-      console.log('📋 [JWT INTERCEPTOR] Authorization header creado:', authReq.headers.get('Authorization')?.substring(0, 30) + '...');
+  // Obtener token desde localStorage
+  const token = localStorage.getItem('jwt_token');
 
-      return next.handle(authReq);
-    } else {
-      console.log('❌ [JWT INTERCEPTOR] No hay token en localStorage');
+  if (!token) {
+    console.log('❌ [JWT INTERCEPTOR] No hay token disponible');
+    return next(req);
+  }
+
+  console.log('✅ [JWT INTERCEPTOR] Token encontrado');
+  console.log('🔑 [JWT INTERCEPTOR] Token (primeros 30 chars):', token.substring(0, 30) + '...');
+
+  // Verificar que el token no esté expirado
+  if (isTokenExpired(token)) {
+    console.log('⏰ [JWT INTERCEPTOR] Token expirado, removiendo...');
+    localStorage.removeItem('jwt_token');
+    localStorage.removeItem('current_user');
+    return next(req);
+  }
+
+  // Clonar request y agregar Authorization header
+  const authReq = req.clone({
+    setHeaders: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
     }
+  });
 
-    console.log('📤 [JWT INTERCEPTOR] Request enviada SIN Authorization header');
-    return next.handle(req);
+  console.log('📤 [JWT INTERCEPTOR] Request enviada CON token');
+  console.log('📋 [JWT INTERCEPTOR] Authorization header:', authReq.headers.get('Authorization')?.substring(0, 50) + '...');
+
+  return next(authReq);
+};
+
+// Función auxiliar para verificar expiración del token
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const currentTime = Math.floor(Date.now() / 1000);
+    return payload.exp < currentTime;
+  } catch (error) {
+    console.error('[JWT INTERCEPTOR] Error decodificando token:', error);
+    return true;
   }
 }

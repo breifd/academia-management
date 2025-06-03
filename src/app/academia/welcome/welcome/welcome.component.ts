@@ -9,7 +9,7 @@ import { CursoService } from '../../../services/curso.service';
 import { ProfesorService } from '../../../services/profesor.service';
 import { AlumnoService } from '../../../services/alumno.service';
 import { EntregaService } from '../../../services/entrega.service';
-import { LoginResponse } from '../../../interfaces/usuario';
+import { LoginResponse, RolUsuario } from '../../../interfaces/usuario';
 
 
 interface EstadisticasData {
@@ -21,6 +21,7 @@ interface EstadisticasData {
   loading: boolean;
   error: string | null;
 }
+
 @Component({
   selector: 'app-welcome',
   standalone: true,
@@ -76,6 +77,99 @@ export class WelcomeComponent implements OnInit, OnDestroy {
     // Para poder ir acceder otra vez a la pagina welcome es obligatorio volver a iniciar sesión
     if(this.userSubscription){
       this.userSubscription.unsubscribe();
+    }
+  }
+
+  // ================================
+  // MÉTODOS PARA SALUDO PERSONALIZADO
+  // ================================
+
+  /**
+   * Obtiene un saludo personalizado según la hora del día
+   */
+  getSaludo(): string {
+    if (!this.usuario) return 'Bienvenido';
+
+    const hora = new Date().getHours();
+    const nombre = this.usuario.nombre || 'Usuario';
+
+    if (hora >= 5 && hora < 12) {
+      return `¡Buenos días, ${nombre}!`;
+    } else if (hora >= 12 && hora < 18) {
+      return `¡Buenas tardes, ${nombre}!`;
+    } else if (hora >= 18 && hora < 22) {
+      return `¡Buenas noches, ${nombre}!`;
+    } else {
+      return `¡Hola, ${nombre}!`;
+    }
+  }
+
+  /**
+   * Obtiene las iniciales del usuario para mostrar en el avatar
+   */
+  getInitials(): string {
+    if (!this.usuario) return 'U';
+
+    const nombre = this.usuario.nombre || '';
+    const apellido = this.usuario.apellido || '';
+
+    const inicialNombre = nombre.charAt(0).toUpperCase();
+    const inicialApellido = apellido.charAt(0).toUpperCase();
+
+    return `${inicialNombre}${inicialApellido}` || 'U';
+  }
+
+  /**
+   * Obtiene el nombre del rol en español para mostrar al usuario
+   */
+  getRoleDisplayName(): string {
+    if (!this.usuario?.rol) return 'Usuario';
+
+    switch (this.usuario.rol) {
+      case RolUsuario.ADMIN:
+        return 'Administrador';
+      case RolUsuario.PROFESOR:
+        return 'Profesor';
+      case RolUsuario.ALUMNO:
+        return 'Estudiante';
+      default:
+        return 'Usuario';
+    }
+  }
+
+  /**
+   * Obtiene el icono correspondiente al rol del usuario
+   */
+  getRoleIcon(): string {
+    if (!this.usuario?.rol) return '👤';
+
+    switch (this.usuario.rol) {
+      case RolUsuario.ADMIN:
+        return '⚡'; // Rayo para administrador
+      case RolUsuario.PROFESOR:
+        return '🎓'; // Birrete para profesor
+      case RolUsuario.ALUMNO:
+        return '📚'; // Libros para estudiante
+      default:
+        return '👤'; // Usuario genérico
+    }
+  }
+
+  /**
+   * Obtiene un mensaje de bienvenida contextual según el rol
+   */
+  getMensajeContextual(): string {
+    if (!this.usuario?.rol) return '';
+
+    switch (this.usuario.rol) {
+      case RolUsuario.ADMIN:
+        return 'Gestiona y supervisa toda la academia desde aquí';
+      case RolUsuario.PROFESOR:
+        return 'Crea y gestiona tus cursos y tareas';
+      case RolUsuario.ALUMNO:
+        return 'Accede a tus cursos y realiza tus tareas';
+      default:
+        return 'Bienvenido a la plataforma';
     }
   }
 

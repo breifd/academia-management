@@ -39,6 +39,9 @@ export class FormEntregaComponent implements OnInit {
   archivoSeleccionado: File | null = null;
   nombreArchivoActual: string | null = null;
 
+  archivoProfesorSeleccionado: File | null = null;
+  nombreArchivoProfesor: string | null = null;
+
   // Estados y roles
   estadoEntrega = EstadoEntrega;
   rolUsuario = RolUsuario;
@@ -132,6 +135,7 @@ export class FormEntregaComponent implements OnInit {
         this.entrega = entrega;
         this.tarea = entrega.tarea || null;
         this.nombreArchivoActual = entrega.nombreDocumento || null;
+        this.nombreArchivoProfesor = entrega.nombreDocumentoProfesor || null; // ✅ NUEVO
 
         // Cargar datos en el formulario
         this.entregaForm.patchValue({
@@ -174,6 +178,14 @@ export class FormEntregaComponent implements OnInit {
       this.archivoSeleccionado = element.files[0];
     } else {
       this.archivoSeleccionado = null;
+    }
+  }
+  onFileProfesorSelected(event: Event): void {
+    const element = event.target as HTMLInputElement;
+    if (element.files && element.files.length > 0) {
+      this.archivoProfesorSeleccionado = element.files[0];
+    } else {
+      this.archivoProfesorSeleccionado = null;
     }
   }
 
@@ -270,7 +282,7 @@ uploadFile(): void {
     });
   }
 }
-  calificarEntrega(): void {
+ calificarEntrega(): void {
     if (this.calificacionForm.invalid || !this.entregaID) {
       this.calificacionForm.markAllAsTouched();
       return;
@@ -285,19 +297,43 @@ uploadFile(): void {
       comentarios: this.calificacionForm.get('comentarios')?.value || ''
     };
 
-    this.entregaService.calificarEntrega(this.entregaID, calificacionData).subscribe({
-      next: (entrega) => {
-        this.entrega = entrega;
-        this.successMessage = 'Entrega calificada correctamente';
-        this.loading = false;
-        setTimeout(() => this.router.navigate(['/entregas']), 2000);
-      },
-      error: (err) => {
-        this.error = 'Error al calificar la entrega. Inténtelo de nuevo más tarde.';
-        this.loading = false;
-        console.error('Error:', err);
-      }
-    });
+    // ✅ DECIDIR QUÉ MÉTODO USAR SEGÚN SI HAY DOCUMENTO
+    if (this.archivoProfesorSeleccionado) {
+      // Con documento - usar FormData
+      this.entregaService.calificarEntregaConDocumento(
+        this.entregaID,
+        calificacionData,
+        this.archivoProfesorSeleccionado
+      ).subscribe({
+        next: (entrega) => {
+          this.entrega = entrega;
+          this.nombreArchivoProfesor = entrega.nombreDocumentoProfesor || null;
+          this.successMessage = 'Entrega calificada correctamente con documento adjunto';
+          this.loading = false;
+          setTimeout(() => this.router.navigate(['/entregas']), 2000);
+        },
+        error: (err) => {
+          console.error('❌ Error al calificar con documento:', err);
+          this.error = err.error?.error || 'Error al calificar la entrega. Inténtelo de nuevo más tarde.';
+          this.loading = false;
+        }
+      });
+    } else {
+      // Sin documento - usar JSON
+      this.entregaService.calificarEntrega(this.entregaID, calificacionData).subscribe({
+        next: (entrega) => {
+          this.entrega = entrega;
+          this.successMessage = 'Entrega calificada correctamente';
+          this.loading = false;
+          setTimeout(() => this.router.navigate(['/entregas']), 2000);
+        },
+        error: (err) => {
+          console.error('❌ Error al calificar:', err);
+          this.error = err.error?.error || 'Error al calificar la entrega. Inténtelo de nuevo más tarde.';
+          this.loading = false;
+        }
+      });
+    }
   }
 
   descargarDocumento(): void {
@@ -326,6 +362,8 @@ uploadFile(): void {
   guardar(): void {
     if (this.mode === 'crear') {
       this.crearEntrega();
+    } else if (this.mode === 'edit') {
+      this.actualizarEntrega();
     } else if (this.mode === 'calificar') {
       this.calificarEntrega();
     }
@@ -393,7 +431,9 @@ uploadFile(): void {
   }
 
   mostrarFormularioEntrega(): boolean {
-    return this.mode === 'crear' || (this.mode === 'view' && this.esAlumno());
+    return this.mode === 'crear' ||
+          this.mode === 'edit' ||
+          (this.mode === 'view' && this.esAlumno());
   }
 
   mostrarFormularioCalificacion(): boolean {
@@ -423,6 +463,84 @@ getMensajeEstado(): string {
 
   return '✅ Puedes realizar tu entrega normalmente.';
 }
+
+// ✅ NUEVO MÉTODO: Actualizar entrega existente
+  actualizarEntrega(): void {
+    if (this.entregaForm.invalid || !this.entregaID) {
+      this.entregaForm.markAllAsTouched();
+      return;
+    }
+
+    this.loading = true;
+    this.error = null;
+    this.successMessage = null;
+
+    const entregaData: EntregaCreateDTO = {
+      tareaId: this.entrega?.tarea?.id || this.tareaID!,
+      comentarios: this.entregaForm.get('comentarios')?.value || ''
+    };
+
+    console.log('🔄 Actualizando entrega con datos:', entregaData);
+
+    this.entregaService.updateEntrega(this.entregaID, entregaData).subscribe({
+      next: (entrega) => {
+        this.entrega = entrega;
+        this.successMessage = '✅ Entrega actualizada correctamente.';
+        this.loading = false;
+
+        // Si hay archivo seleccionado, subirlo
+        if (this.archivoSeleccionado) {
+          setTimeout(() => this.uploadFile(), 1000);
+        } else {
+          setTimeout(() => this.router.navigate(['/entregas']), 2000);
+        }
+      },
+      error: (err) => {
+        console.error('❌ Error al actualizar:', err);
+        this.error = err.error?.error || 'Error al actualizar la entrega. Inténtelo de nuevo.';
+        this.loading = false;
+      }
+    });
+  }
+
+  puedeEditar(): boolean {
+    if (!this.entrega || !this.esAlumno()) return false;
+    return this.entregaService.puedeEditarEntrega(this.entrega, this.tarea);
+  }
+
+  // ✅ NUEVO MÉTODO: Verificar si mostrar botón editar
+  mostrarBotonEditar(): boolean {
+    return this.mode === 'view' && this.puedeEditar();
+  }
+
+  // ✅ NUEVO MÉTODO: Cambiar a modo edición
+  cambiarAModoEdicion(): void {
+    this.mode = 'edit';
+    this.tipoMode(); // Habilitar formularios
+  }
+
+  descargarDocumentoProfesor(): void {
+    if (this.entregaID) {
+      this.entregaService.downloadDocumentoProfesor(this.entregaID).subscribe({
+        next: (blob) => {
+          if (this.nombreArchivoProfesor) {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = this.nombreArchivoProfesor;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+          }
+        },
+        error: (err) => {
+          this.error = 'Error al descargar el documento del profesor. Inténtelo de nuevo más tarde.';
+          console.error('Error:', err);
+        }
+      });
+    }
+  }
 
 
 

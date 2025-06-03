@@ -35,6 +35,8 @@ export class ListaAlumnosComponent implements OnInit {
   loading: boolean = false;
   error: string | null = null;
 
+
+
   private cursosCompartidosCache: Map<number, boolean> = new Map();
 
   constructor(private alumnoService: AlumnoService,

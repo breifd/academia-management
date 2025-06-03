@@ -16,6 +16,10 @@ export const routes: Routes = [
         path: 'welcome',
         loadComponent: () => import('./academia/welcome/welcome/welcome.component').then(m => m.WelcomeComponent)
       },
+       {
+        path: 'perfil',
+        loadComponent: () => import('./academia/mi-perfil/mi-perfil.component').then(m => m.MiPerfilComponent)
+      },
       {
         path: 'profesores',
         loadComponent: () => import('./academia/profesores/lista-profesores/lista-profesores.component').then(m => m.ProfesoresComponent)

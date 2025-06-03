@@ -1,8 +1,11 @@
+// lista-tareas.component.ts - Optimizado para mejor rendimiento
+
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { PaginationComponent } from '../../pagination/pagination/pagination.component';
+import { Subject, takeUntil, debounceTime, distinctUntilChanged, forkJoin } from 'rxjs';
 
 import { TareaService } from '../../../services/tarea.service';
 import { AuthService } from '../../../services/auth.service';
@@ -12,6 +15,8 @@ import { Page } from '../../../interfaces/page';
 import { TareaResponseDTO } from '../../../interfaces/tarea-entity';
 import { LoginResponse, RolUsuario } from '../../../interfaces/usuario';
 import { CursoSimpleDTO } from '../../../interfaces/curso-entity';
+import { EntregaResponseDTO } from '../../../interfaces/entregas-entity';
+import { EntregaService } from '../../../services/entrega.service';
 
 @Component({
   selector: 'app-lista-tareas',
@@ -20,12 +25,20 @@ import { CursoSimpleDTO } from '../../../interfaces/curso-entity';
   templateUrl: './lista-tareas.component.html',
   styleUrl: './lista-tareas.component.scss'
 })
-export class ListaTareasComponent implements OnInit {
+export class ListaTareasComponent implements OnInit, OnDestroy {
+
+  // ✅ OPTIMIZACIÓN: Subject para destruir subscripciones
+  private destroy$ = new Subject<void>();
+  private searchSubject = new Subject<string>();
 
   tareas: TareaResponseDTO[] = [];
-  tareasOriginales: TareaResponseDTO[] = []; // Para filtrar en el frontend
+  tareasOriginales: TareaResponseDTO[] = [];
   page: Page<TareaResponseDTO> | null = null;
   cursos: CursoSimpleDTO[] = [];
+  entregasDelAlumno: EntregaResponseDTO[] = [];
+
+  alumnoIdEspecifico: number | null = null;
+  profesorIdEspecifico: number | null = null;
 
   // Usuario y roles
   usuario: LoginResponse | null = null;
@@ -52,35 +65,87 @@ export class ListaTareasComponent implements OnInit {
     private authService: AuthService,
     private cursoService: CursoService,
     private router: Router,
-    private route: ActivatedRoute
-  ) { }
-
-  ngOnInit(): void {
-    this.authService.currentUser.subscribe(user => {
-      this.usuario = user;
-      this.loadCursos();
-      this.loadTareas();
+    private route: ActivatedRoute,
+    private entregaService: EntregaService
+  ) {
+    // ✅ OPTIMIZACIÓN: Debounce para búsqueda
+    this.searchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      takeUntil(this.destroy$)
+    ).subscribe(() => {
+      this.filtrarTareas();
     });
+  }
+
+    ngOnInit(): void {
+    console.log('🔄 [LISTA TAREAS] Inicializando componente...');
+
+    // ✅ MODIFICAR - Detectar si se está consultando un alumno o profesor específico
+    this.route.queryParams.subscribe(params => {
+      if (params['alumnoId']) {
+        this.alumnoIdEspecifico = +params['alumnoId'];
+        this.profesorIdEspecifico = null; // Reset
+        console.log('👤 [LISTA TAREAS] Consultando tareas del alumno ID:', this.alumnoIdEspecifico);
+      } else if (params['profesorId']) {  // <-- NUEVA CONDICIÓN
+        this.profesorIdEspecifico = +params['profesorId'];
+        this.alumnoIdEspecifico = null; // Reset
+        console.log('👨‍🏫 [LISTA TAREAS] Consultando tareas del profesor ID:', this.profesorIdEspecifico);
+      }
+    });
+
+    this.authService.currentUser
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(user => {
+        console.log('👤 [LISTA TAREAS] Usuario cargado:', user?.rol);
+        this.usuario = user;
+        if (this.usuario) {
+          this.loadCursos();
+          this.loadTareas();
+        }
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   loadCursos(): void {
-    this.cursoService.getCursosLista().subscribe({
-      next: (cursos) => {
-        this.cursos = cursos;
-      },
-      error: (err) => {
-        console.error('Error al cargar cursos:', err);
-      }
-    });
+    console.log('📚 [LISTA TAREAS] Cargando cursos...');
+
+    this.cursoService.getCursosLista()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (cursos) => {
+          this.cursos = cursos;
+          console.log('✅ [LISTA TAREAS] Cursos cargados:', cursos.length);
+        },
+        error: (err) => {
+          console.error('❌ [LISTA TAREAS] Error al cargar cursos:', err);
+        }
+      });
   }
 
   loadTareas(): void {
-    if (!this.usuario) return;
+  if (!this.usuario) {
+    console.log('⚠️ [LISTA TAREAS] No hay usuario, saltando carga de tareas');
+    return;
+  }
 
-    this.loading = true;
-    this.error = null;
+  console.log('📋 [LISTA TAREAS] Cargando tareas para rol:', this.usuario.rol);
+  this.loading = true;
+  this.error = null;
 
-    // 🔥 LÓGICA PRINCIPAL: Cargar tareas según el rol del usuario
+  // ✅ MODIFICAR - Agregar lógica para profesor específico
+  if (this.alumnoIdEspecifico) {
+    console.log('🎯 [LISTA TAREAS] Modo consulta específica - Alumno ID:', this.alumnoIdEspecifico);
+    this.loadTareasParaAlumnoEspecifico(this.alumnoIdEspecifico);
+  } else if (this.profesorIdEspecifico) {  // <-- NUEVA CONDICIÓN
+    console.log('🎯 [LISTA TAREAS] Modo consulta específica - Profesor ID:', this.profesorIdEspecifico);
+    this.loadTareasParaProfesorEspecifico(this.profesorIdEspecifico);
+  } else {
+    // Lógica original sin cambios
     if (this.esAlumno()) {
       this.loadTareasParaAlumno();
     } else if (this.esProfesor()) {
@@ -89,6 +154,7 @@ export class ListaTareasComponent implements OnInit {
       this.loadTodasLasTareas();
     }
   }
+}
 
   // ✅ MÉTODO ESPECÍFICO: Cargar tareas solo para el alumno logueado
   loadTareasParaAlumno(): void {
@@ -98,20 +164,20 @@ export class ListaTareasComponent implements OnInit {
       return;
     }
 
-    // Usar el endpoint específico para obtener tareas del alumno
-    this.tareaService.getTareasByAlumno(this.usuario.alumnoId, 0, 1000, this.sortBy, this.sortDirection).subscribe({
-      next: (page) => {
-        console.log('🎯 Tareas cargadas para alumno:', page.content.length);
-        this.tareasOriginales = page.content;
-        this.filtrarTareas();
-        this.loading = false;
-      },
-      error: (err) => {
-        this.error = 'Error al cargar tus tareas asignadas';
-        this.loading = false;
-        console.error('Error:', err);
-      }
-    });
+    // Cargar tanto las tareas como las entregas del alumno
+    this.loadTareasYEntregasParaAlumno(this.usuario.alumnoId);
+  }
+
+  loadTareasParaAlumnoEspecifico(alumnoId: number): void {
+    console.log('🎓 [LISTA TAREAS] Cargando tareas para alumno ID:', alumnoId);
+
+    // Si es el alumno logueado, cargar también sus entregas
+    if (this.esAlumno() && this.usuario?.alumnoId === alumnoId) {
+      this.loadTareasYEntregasParaAlumno(alumnoId);
+    } else {
+      // Si no es el alumno logueado (ej: admin viendo tareas de un alumno), solo cargar tareas
+      this.loadSoloTareasParaAlumno(alumnoId);
+    }
   }
 
   // ✅ MÉTODO ESPECÍFICO: Cargar tareas para el profesor logueado
@@ -122,47 +188,61 @@ export class ListaTareasComponent implements OnInit {
       return;
     }
 
-    this.tareaService.getTareasByProfesor(this.usuario.profesorId, 0, 1000, this.sortBy, this.sortDirection).subscribe({
-      next: (page) => {
-        console.log('🎯 Tareas cargadas para profesor:', page.content.length);
-        this.tareasOriginales = page.content;
-        this.filtrarTareas();
-        this.loading = false;
-      },
-      error: (err) => {
-        this.error = 'Error al cargar tus tareas';
-        this.loading = false;
-        console.error('Error:', err);
-      }
-    });
+    console.log('👨‍🏫 [LISTA TAREAS] Cargando tareas para profesor ID:', this.usuario.profesorId);
+
+    this.tareaService.getTareasByProfesor(this.usuario.profesorId, 0, 1000, this.sortBy, this.sortDirection)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (page) => {
+          console.log('✅ [LISTA TAREAS] Tareas de profesor cargadas:', page.content.length);
+          this.tareasOriginales = page.content;
+          this.filtrarTareas();
+          this.loading = false;
+        },
+        error: (err) => {
+          console.error('❌ [LISTA TAREAS] Error tareas profesor:', err);
+          this.error = 'Error al cargar tus tareas';
+          this.loading = false;
+        }
+      });
   }
 
   // ✅ MÉTODO ESPECÍFICO: Cargar todas las tareas (para admin)
   loadTodasLasTareas(): void {
-    this.tareaService.getTareas(0, 1000, this.sortBy, this.sortDirection).subscribe({
-      next: (page) => {
-        console.log('🎯 Todas las tareas cargadas:', page.content.length);
-        this.tareasOriginales = page.content;
-        this.filtrarTareas();
-        this.loading = false;
-      },
-      error: (err) => {
-        this.error = 'Error al cargar las tareas';
-        this.loading = false;
-        console.error('Error:', err);
-      }
-    });
+    console.log('👑 [LISTA TAREAS] Cargando todas las tareas (admin)');
+
+    this.tareaService.getTareas(0, 1000, this.sortBy, this.sortDirection)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (page) => {
+          console.log('✅ [LISTA TAREAS] Todas las tareas cargadas:', page.content.length);
+          this.tareasOriginales = page.content;
+          this.filtrarTareas();
+          this.loading = false;
+        },
+        error: (err) => {
+          console.error('❌ [LISTA TAREAS] Error todas las tareas:', err);
+          this.error = 'Error al cargar las tareas';
+          this.loading = false;
+        }
+      });
   }
 
-  // ✅ FILTRADO EN EL FRONTEND
+  // ✅ FILTRADO EN EL FRONTEND OPTIMIZADO
   filtrarTareas(): void {
+    console.log('🔍 [LISTA TAREAS] Filtrando tareas...');
+    console.log('  - Filtro nombre:', this.nombreFilter);
+    console.log('  - Filtro curso:', this.cursoFilter);
+    console.log('  - Filtro estado:', this.estadoFilter);
+
     let tareasFiltradas = [...this.tareasOriginales];
 
     // Filtro por nombre
     if (this.nombreFilter.trim()) {
+      const filtroLower = this.nombreFilter.toLowerCase();
       tareasFiltradas = tareasFiltradas.filter(tarea =>
-        tarea.nombre.toLowerCase().includes(this.nombreFilter.toLowerCase()) ||
-        (tarea.descripcion && tarea.descripcion.toLowerCase().includes(this.nombreFilter.toLowerCase()))
+        tarea.nombre.toLowerCase().includes(filtroLower) ||
+        (tarea.descripcion && tarea.descripcion.toLowerCase().includes(filtroLower))
       );
     }
 
@@ -193,6 +273,13 @@ export class ListaTareasComponent implements OnInit {
     this.tareas = tareasFiltradas;
     this.currentPage = 0; // Resetear a primera página
     this.updatePage();
+
+    console.log('✅ [LISTA TAREAS] Filtrado completo. Tareas resultantes:', this.tareas.length);
+  }
+
+  // ✅ OPTIMIZACIÓN: Búsqueda con debounce
+  onSearchChange(): void {
+    this.searchSubject.next(this.nombreFilter);
   }
 
   search(): void {
@@ -200,6 +287,7 @@ export class ListaTareasComponent implements OnInit {
   }
 
   resetFilters(): void {
+    console.log('🧹 [LISTA TAREAS] Limpiando filtros...');
     this.nombreFilter = '';
     this.cursoFilter = null;
     this.estadoFilter = 'todas';
@@ -255,42 +343,61 @@ export class ListaTareasComponent implements OnInit {
 
   // ✅ MÉTODOS DE NAVEGACIÓN
   crearTarea(): void {
-   console.log('🚀 Navegando a crear tarea...'); // Debug
-  this.router.navigate(['/tareas/nuevo']);
+    console.log('🚀 [LISTA TAREAS] Navegando a crear tarea...');
+    this.router.navigate(['/tareas/nuevo'], {
+      queryParams: { modo: 'crear' }
+    });
   }
 
   verTarea(id: number): void {
-    this.router.navigate(['/tareas', id]);
+    console.log('👁️ [LISTA TAREAS] Ver tarea ID:', id);
+    this.router.navigate(['/tareas', id], {
+      queryParams: { modo: 'view' }
+    });
   }
 
   editarTarea(id: number): void {
-    this.router.navigate(['/tareas', id], { queryParams: { modo: 'edit' } });
+    console.log('✏️ [LISTA TAREAS] Editar tarea ID:', id);
+    this.router.navigate(['/tareas', id], {
+      queryParams: { modo: 'edit' }
+    });
   }
 
   eliminarTarea(id: number): void {
-    if (confirm('¿Está seguro de que desea eliminar esta tarea?')) {
-      this.tareaService.deleteTarea(id).subscribe({
+    if (!confirm('¿Está seguro de que desea eliminar esta tarea?')) {
+      return;
+    }
+
+    console.log('🗑️ [LISTA TAREAS] Eliminando tarea ID:', id);
+
+    this.tareaService.deleteTarea(id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
         next: () => {
+          console.log('✅ [LISTA TAREAS] Tarea eliminada correctamente');
           this.successMessage = 'Tarea eliminada correctamente';
           this.loadTareas();
           setTimeout(() => this.successMessage = null, 3000);
         },
         error: (err) => {
+          console.error('❌ [LISTA TAREAS] Error al eliminar:', err);
           this.error = 'Error al eliminar la tarea';
-          console.error('Error:', err);
         }
       });
-    }
   }
 
   // Navegar a entregas de una tarea específica
   verEntregasTarea(tareaId: number): void {
-    this.router.navigate(['/entregas'], { queryParams: { tareaId: tareaId } });
+    console.log('📋 [LISTA TAREAS] Ver entregas tarea ID:', tareaId);
+    this.router.navigate(['/entregas'], {
+      queryParams: { tareaId: tareaId }
+    });
   }
 
   // ✅ ACCIÓN ESPECÍFICA PARA ALUMNOS: Hacer entrega
   hacerEntrega(tareaId: number): void {
     if (this.esAlumno()) {
+      console.log('📤 [LISTA TAREAS] Hacer entrega tarea ID:', tareaId);
       this.router.navigate(['/tareas', tareaId, 'entrega']);
     }
   }
@@ -316,12 +423,8 @@ export class ListaTareasComponent implements OnInit {
   }
 
   getEstadoTarea(tarea: TareaResponseDTO): string {
-    if (this.isTareaVencida(tarea)) {
-      return 'Vencida';
-    }
-    if (tarea.fechaPublicacion && new Date(tarea.fechaPublicacion) > new Date()) {
-      return 'Programada';
-    }
+    if (this.isTareaVencida(tarea)) return 'Vencida';
+    if (tarea.fechaPublicacion && new Date(tarea.fechaPublicacion) > new Date()) return 'Programada';
     return 'Activa';
   }
 
@@ -336,7 +439,7 @@ export class ListaTareasComponent implements OnInit {
   }
 
   tieneDocumento(tarea: TareaResponseDTO): boolean {
-    return tarea.tieneDocumento || false;
+    return this.tareaService.tieneDocumento(tarea);
   }
 
   // ✅ VERIFICACIONES DE ROL
@@ -353,8 +456,12 @@ export class ListaTareasComponent implements OnInit {
   }
 
   puedeCrearTarea(): boolean {
+    // ✅ MODIFICAR - No mostrar botón cuando se consulta alumno o profesor específico
+    if (this.alumnoIdEspecifico || this.profesorIdEspecifico) return false;
+
     return this.esProfesor() || this.esAdmin();
   }
+
 
   puedeEditarTarea(tarea: TareaResponseDTO): boolean {
     if (this.esAdmin()) return true;
@@ -370,37 +477,50 @@ export class ListaTareasComponent implements OnInit {
     return this.puedeEditarTarea(tarea);
   }
 
-  // ✅ VERIFICAR SI EL ALUMNO PUEDE HACER LA ENTREGA
-  puedeHacerEntrega(tarea: TareaResponseDTO): boolean {
+   puedeHacerEntrega(tarea: TareaResponseDTO): boolean {
     if (!this.esAlumno()) return false;
+    if (tarea.fechaPublicacion && new Date(tarea.fechaPublicacion) > new Date()) return false;
 
-    // Verificar si la tarea ya está publicada
-    if (tarea.fechaPublicacion && new Date(tarea.fechaPublicacion) > new Date()) {
+    // ✅ NUEVO: No permitir entregas si la tarea está vencida
+    if (this.isTareaVencida(tarea)) {
       return false;
     }
 
-    // Permitir entrega incluso si está vencida (el sistema manejará la penalización)
+    // ✅ NUEVO: No permitir entregas si ya entregó esta tarea
+    if (this.yaEntregoTarea(tarea.id!)) {
+      return false;
+    }
+
     return true;
   }
 
   getHeaderTitle(): string {
-    if (this.esAlumno()) {
-      return 'Mis Tareas Asignadas';
-    } else if (this.esProfesor()) {
-      return 'Mis Tareas Creadas';
-    } else {
-      return 'Todas las Tareas';
+    if (this.alumnoIdEspecifico) {
+      return 'Tareas del Alumno';
     }
-  }
 
-  getEmptyMessage(): string {
-    if (this.esAlumno()) {
-      return 'No tienes tareas asignadas en este momento.';
-    } else if (this.esProfesor()) {
-      return 'No has creado ninguna tarea aún.';
-    } else {
-      return 'No hay tareas registradas en el sistema.';
+    // ✅ NUEVO - Título para profesor específico
+    if (this.profesorIdEspecifico) {
+      return 'Tareas del Profesor';
     }
+
+    if (this.esAlumno()) return 'Mis Tareas Asignadas';
+    if (this.esProfesor()) return 'Mis Tareas Creadas';
+    return 'Todas las Tareas';
+  }
+  getEmptyMessage(): string {
+    if (this.alumnoIdEspecifico) {
+      return 'Este alumno no tiene tareas asignadas.';
+    }
+
+    // ✅ NUEVO - Mensaje para profesor específico
+    if (this.profesorIdEspecifico) {
+      return 'Este profesor no ha creado tareas aún.';
+    }
+
+    if (this.esAlumno()) return 'No tienes tareas asignadas en este momento.';
+    if (this.esProfesor()) return 'No has creado ninguna tarea aún.';
+    return 'No hay tareas registradas en el sistema.';
   }
 
   getTareasActivas(): number {
@@ -410,4 +530,115 @@ export class ListaTareasComponent implements OnInit {
   getTareasVencidas(): number {
     return this.tareas.filter(t => this.isTareaVencida(t)).length;
   }
+
+  descargarDocumento(tareaId: number, nombreArchivo: string): void {
+    console.log('📥 [LISTA TAREAS] Descargando documento tarea ID:', tareaId);
+
+    this.tareaService.downloadDocumento(tareaId).subscribe({
+      next: (blob) => {
+        console.log('✅ [LISTA TAREAS] Documento descargado correctamente');
+
+        // Crear URL del blob y descargar
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = nombreArchivo;
+        document.body.appendChild(a);
+        a.click();
+
+        // Limpiar
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      },
+      error: (err) => {
+        console.error('❌ [LISTA TAREAS] Error al descargar:', err);
+        this.error = 'Error al descargar el documento. Inténtelo de nuevo más tarde.';
+        setTimeout(() => this.error = null, 5000);
+      }
+    });
+  }
+  loadTareasParaProfesorEspecifico(profesorId: number): void {
+  console.log('👨‍🏫 [LISTA TAREAS] Cargando tareas para profesor ID:', profesorId);
+
+  this.tareaService.getTareasByProfesor(profesorId, 0, 1000, this.sortBy, this.sortDirection)
+    .pipe(takeUntil(this.destroy$))
+    .subscribe({
+      next: (page) => {
+        console.log('✅ [LISTA TAREAS] Tareas de profesor específico cargadas:', page.content.length);
+        this.tareasOriginales = page.content;
+        this.filtrarTareas();
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error('❌ [LISTA TAREAS] Error tareas profesor específico:', err);
+        this.error = 'Error al cargar las tareas del profesor';
+        this.loading = false;
+      }
+    });
+}
+
+  loadTareasYEntregasParaAlumno(alumnoId: number): void {
+    console.log('🎓📤 [LISTA TAREAS] Cargando tareas Y entregas para alumno ID:', alumnoId);
+
+    // Cargar tareas y entregas en paralelo
+    const tareas$ = this.tareaService.getTareasByAlumno(alumnoId, 0, 1000, this.sortBy, this.sortDirection);
+    const entregas$ = this.entregaService.getEntregas(0, 1000, 'id', 'desc');
+
+    forkJoin({
+      tareas: tareas$,
+      entregas: entregas$
+    })
+    .pipe(takeUntil(this.destroy$))
+    .subscribe({
+      next: (result) => {
+        console.log('✅ [LISTA TAREAS] Tareas cargadas:', result.tareas.content.length);
+
+        // Filtrar solo las entregas de este alumno
+        this.entregasDelAlumno = result.entregas.content.filter(
+          entrega => entrega.alumno?.id === alumnoId
+        );
+
+        console.log('✅ [LISTA TAREAS] Entregas del alumno cargadas:', this.entregasDelAlumno.length);
+
+        this.tareasOriginales = result.tareas.content;
+        this.filtrarTareas();
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error('❌ [LISTA TAREAS] Error al cargar tareas y entregas:', err);
+        this.error = 'Error al cargar las tareas del alumno';
+        this.loading = false;
+      }
+    });
+  }
+
+  // ✅ NUEVO MÉTODO: Cargar solo tareas (para cuando no es el alumno logueado)
+  loadSoloTareasParaAlumno(alumnoId: number): void {
+    this.tareaService.getTareasByAlumno(alumnoId, 0, 1000, this.sortBy, this.sortDirection)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (page) => {
+          console.log('✅ [LISTA TAREAS] Tareas de alumno cargadas:', page.content.length);
+          this.tareasOriginales = page.content;
+          this.filtrarTareas();
+          this.loading = false;
+        },
+        error: (err) => {
+          console.error('❌ [LISTA TAREAS] Error tareas alumno:', err);
+          this.error = 'Error al cargar las tareas del alumno';
+          this.loading = false;
+        }
+      });
+  }
+
+  // ✅ NUEVO MÉTODO: Verificar si el alumno ya entregó una tarea
+  yaEntregoTarea(tareaId: number): boolean {
+    if (!this.esAlumno() || this.entregasDelAlumno.length === 0) {
+      return false;
+    }
+
+    return this.entregasDelAlumno.some(entrega => entrega.tarea?.id === tareaId);
+  }
+
+
 }

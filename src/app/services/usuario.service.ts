@@ -74,4 +74,15 @@ export class UsuarioService {
     })
   );;
   }
+
+  // Añadir al final de la clase UsuarioService
+  cambiarPasswordSimple(username: string, passwordActual: string, passwordNueva: string): Observable<{success: boolean, message: string}> {
+    const data = {
+      username: username,
+      passwordActual: passwordActual,
+      passwordNueva: passwordNueva
+    };
+
+    return this.http.put<{success: boolean, message: string}>(`${this.apiUrl}/cambiar-password-simple`, data);
+  }
 }

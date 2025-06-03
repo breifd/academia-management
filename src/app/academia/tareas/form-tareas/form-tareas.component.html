@@ -82,7 +82,12 @@
             type="date"
             id="fechaPublicacion"
             formControlName="fechaPublicacion"
-            style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box;">
+            [value]="today"
+            readonly
+            style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box; background-color: #f9f9f9; color: #666;">
+          <small style="color: #666; font-size: 12px; margin-top: 4px; display: block;">
+            📅 La tarea se publicará automáticamente hoy ({{ formatFechaLegible(today) }})
+          </small>
         </div>
 
         <!-- Fecha Límite -->
@@ -143,10 +148,11 @@
         </div>
         </div>
 
+
         <!-- Documento (span 2 columnas) -->
         <div style="margin-bottom: 16px; grid-column: span 2;">
           <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
-            Documento
+            Documento (opcional)
           </label>
 
           <!-- Muestra el nombre del documento actual si existe -->
@@ -162,34 +168,27 @@
             </button>
           </div>
 
-          <!-- Selector de archivos (solo visible en edit o crear) -->
-          <div *ngIf="mode === 'edit' || mode === 'crear'" style="display: flex; align-items: center;">
+          <!-- Selector de archivos -->
+          <div style="display: flex; align-items: center;">
             <input
               type="file"
               id="documento"
               (change)="onFileSelected($event)"
               style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;"
+              accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
             >
-
-            <!-- Botón para subir archivo (solo visible después de seleccionar un archivo) -->
-            <button
-              *ngIf="archivoSeleccionado && tareaID"
-              type="button"
-              (click)="uploadFile()"
-              style="margin-left: 10px; background-color: #4caf50; color: white; border: none; border-radius: 4px; padding: 6px 12px; cursor: pointer;"
-            >
-              Subir
-            </button>
           </div>
 
           <!-- Mensaje informativo sobre el archivo seleccionado -->
           <div *ngIf="archivoSeleccionado" style="margin-top: 6px; font-size: 14px; color: #666;">
-            Archivo seleccionado: {{ archivoSeleccionado.name }} ({{ (archivoSeleccionado.size / 1024).toFixed(2) }} KB)
+            <span style="color: #4caf50;">✓</span> Archivo seleccionado: {{ archivoSeleccionado.name }} ({{ (archivoSeleccionado.size / 1024).toFixed(2) }} KB)
+            <br>
+            <em>El documento se subirá junto con la tarea al guardar.</em>
           </div>
 
-          <!-- Mensaje informativo en modo crear -->
-          <div *ngIf="mode === 'crear' && !tareaID" style="margin-top: 6px; font-size: 14px; color: #666;">
-            El documento se podrá subir después de guardar la tarea.
+          <!-- Mensaje informativo para modo editar -->
+          <div *ngIf="mode === 'edit' && !archivoSeleccionado && !nombreArchivoActual" style="margin-top: 6px; font-size: 14px; color: #666;">
+            Seleccione un archivo para agregar o reemplazar el documento de la tarea.
           </div>
         </div>
 
@@ -223,12 +222,12 @@
 
         <!--  *ngIf="mode === 'edit' || mode === 'crear'"  Botón Guardar - solo visible en modos editar o crear -->
         <button
-
+          *ngIf="mode === 'edit' || mode === 'crear'"
           type="submit"
           [disabled]="tareaForm.invalid"
           style="padding: 10px 20px; background-color: #1e88e5; color: white; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; min-width: 100px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"
           [ngStyle]="{'opacity': tareaForm.invalid ? '0.7' : '1', 'cursor': tareaForm.invalid ? 'not-allowed' : 'pointer'}">
-          Guardar (Modo: {{ mode }})
+          Guardar
         </button>
       </div>
     </form>

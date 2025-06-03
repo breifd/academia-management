@@ -1,3 +1,12 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Tareas Mejorada</title>
+</head>
+<body>
+
 <div class="tareas-container">
   <!-- Cabecera -->
   <div class="page-header">
@@ -21,6 +30,7 @@
           type="text"
           id="nombreFilter"
           [(ngModel)]="nombreFilter"
+          (input)="onSearchChange()"
           class="form-control"
           placeholder="Nombre de la tarea...">
       </div>
@@ -30,6 +40,7 @@
         <select
           id="cursoFilter"
           [(ngModel)]="cursoFilter"
+          (change)="search()"
           class="form-control">
           <option [ngValue]="null">Todos los cursos</option>
           <option *ngFor="let curso of cursos" [ngValue]="curso.id">
@@ -43,6 +54,7 @@
         <select
           id="estadoFilter"
           [(ngModel)]="estadoFilter"
+          (change)="search()"
           class="form-control">
           <option value="todas">Todas</option>
           <option value="activas">Activas</option>
@@ -107,106 +119,201 @@
     </div>
 
     <div *ngIf="tareas.length > 0" class="table-responsive">
-      <table class="table">
+      <table class="table table-simple">
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Nombre</th>
-            <th>Curso</th>
-            <th *ngIf="!esAlumno()">Profesor</th>
-            <th>Fecha Publicación</th>
-            <th>Fecha Límite</th>
-            <th>Estado</th>
-            <th *ngIf="!esAlumno()">Entregas</th>
-            <th>Documento</th>
-            <th>Acciones</th>
+            <th class="col-id">ID</th>
+            <th class="col-nombre">Nombre</th>
+            <th class="col-curso">Curso</th>
+            <th *ngIf="!esAlumno()" class="col-profesor">Profesor</th>
+            <th class="col-alumnos">Alumnos Asignados</th>
+            <th class="col-fecha">F. Publicación</th>
+            <th class="col-fecha">F. Límite</th>
+            <th class="col-entregas">Entregas</th>
+            <th class="col-documento">Documento</th>
+            <th class="col-acciones">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr *ngFor="let tarea of getPaginatedTareas()"
-              [class.tarea-vencida]="isTareaVencida(tarea)"
-              [class.tarea-activa]="!isTareaVencida(tarea)">
-            <td>{{ tarea.id }}</td>
-            <td>
-              <strong>{{ tarea.nombre }}</strong>
-              <div *ngIf="tarea.descripcion" class="descripcion-preview">
-                {{ tarea.descripcion.length > 50 ? (tarea.descripcion.substring(0, 50) + '...') : tarea.descripcion }}
-              </div>
-            </td>
-            <td>
-              <span class="badge badge-curso">{{ tarea.curso?.nombre || 'N/A' }}</span>
-              <div *ngIf="tarea.curso?.nivel" class="nivel-curso">{{ tarea.curso?.nivel }}</div>
-            </td>
-            <td *ngIf="!esAlumno()">
-              {{ tarea.profesor?.nombre }} {{ tarea.profesor?.apellido }}
-            </td>
-            <td>{{ formatFecha(tarea.fechaPublicacion) }}</td>
-            <td>
-              <span [style.color]="isTareaVencida(tarea) ? '#d32f2f' : '#333'">
-                {{ formatFecha(tarea.fechaLimite) }}
-                <span *ngIf="isTareaVencida(tarea)" class="badge badge-danger">VENCIDA</span>
-              </span>
-            </td>
-            <td>
-              <span
-                class="badge estado-badge"
-                [style.background-color]="getEstadoColor(tarea)"
-                [style.color]="'white'">
-                {{ getEstadoTarea(tarea) }}
-              </span>
-            </td>
-            <td *ngIf="!esAlumno()">
-              <div class="entregas-info">
-                <span class="entregas-count">{{ tarea.totalEntregas || 0 }}</span>
-                <span *ngIf="(tarea.entregasPendientes || 0) > 0" class="entregas-pendientes">
-                  ({{ tarea.entregasPendientes }} pendientes)
-                </span>
-              </div>
-            </td>
-            <td>
-              <div *ngIf="tieneDocumento(tarea)">
-                <span class="badge badge-success">Disponible</span>
-              </div>
-              <span *ngIf="!tieneDocumento(tarea)" class="badge badge-secondary">Sin documento</span>
-            </td>
-            <td class="actions-cell">
-              <!-- Ver detalles -->
-              <button
-                class="btn-icon btn-view"
-                title="Ver detalles"
-                (click)="verTarea(tarea.id!)">👁️</button>
+              [class.row-vencida]="isTareaVencida(tarea)"
+              [class.row-activa]="!isTareaVencida(tarea)">
 
-              <!-- Hacer entrega (solo alumnos) -->
-              <button
+            <!-- ID -->
+            <td class="text-center col-id">
+              <span class="tarea-id">{{ tarea.id }}</span>
+            </td>
+
+            <!-- Nombre -->
+            <td class="col-nombre">
+              <div class="tarea-info">
+                <div class="tarea-nombre">{{ tarea.nombre }}</div>
+                <div *ngIf="tarea.descripcion" class="tarea-descripcion">
+                  {{ tarea.descripcion.length > 50 ? (tarea.descripcion.substring(0, 50) + '...') : tarea.descripcion }}
+                </div>
+              </div>
+            </td>
+
+            <!-- Curso -->
+            <td class="col-curso">
+              <div class="curso-info">
+                <div class="curso-nombre">{{ tarea.curso?.nombre || 'N/A' }}</div>
+                <div *ngIf="tarea.curso?.nivel" class="curso-nivel">
+                  <span class="badge badge-nivel">{{ tarea.curso?.nivel }}</span>
+                </div>
+              </div>
+            </td>
+
+            <!-- Profesor (solo si no es alumno) -->
+            <td *ngIf="!esAlumno()" class="col-profesor">
+              <div class="profesor-info">
+                {{ tarea.profesor?.nombre }} {{ tarea.profesor?.apellido }}
+              </div>
+            </td>
+
+            <!-- ✅ NUEVA COLUMNA: Alumnos Asignados -->
+            <td class="col-alumnos">
+              <div class="alumnos-info">
+                <!-- Si es para todos los alumnos -->
+                <div *ngIf="tarea.paraTodosLosAlumnos" class="alumnos-todos">
+                  <span class="badge badge-todos">👥 Todos los alumnos</span>
+                  <div class="alumnos-curso">
+                    del curso {{ tarea.curso?.nombre }}
+                  </div>
+                </div>
+
+                <!-- Si es para alumnos específicos -->
+                <div *ngIf="!tarea.paraTodosLosAlumnos" class="alumnos-especificos">
+                  <div *ngIf="tarea.alumnosAsignados && tarea.alumnosAsignados.length > 0" class="lista-alumnos">
+                    <span class="badge badge-especificos">
+                      👤 {{ tarea.alumnosAsignados.length }}
+                      {{ tarea.alumnosAsignados.length === 1 ? 'alumno' : 'alumnos' }}
+                    </span>
+
+                    <!-- Lista de nombres (máximo 2 visibles) -->
+                    <div class="nombres-alumnos">
+                      <div *ngFor="let alumno of tarea.alumnosAsignados.slice(0, 2)" class="nombre-alumno">
+                        {{ alumno.nombre }} {{ alumno.apellido }}
+                      </div>
+                      <div *ngIf="tarea.alumnosAsignados.length > 2" class="mas-alumnos">
+                        y {{ tarea.alumnosAsignados.length - 2 }} más...
+                      </div>
+                    </div>
+                  </div>
+
+                  <div *ngIf="!tarea.alumnosAsignados || tarea.alumnosAsignados.length === 0" class="sin-alumnos">
+                    <span class="badge badge-warning">⚠️ Sin alumnos</span>
+                  </div>
+                </div>
+              </div>
+            </td>
+
+            <!-- Fechas -->
+            <td class="col-fecha">
+              <div class="fecha-info">
+                {{ formatFecha(tarea.fechaPublicacion) }}
+              </div>
+            </td>
+
+            <td class="col-fecha">
+              <div class="fecha-info">
+                {{ formatFecha(tarea.fechaLimite) }}
+                <div *ngIf="isTareaVencida(tarea)" class="fecha-vencida">
+                  <span class="badge badge-vencida">⏰ VENCIDA</span>
+                </div>
+              </div>
+            </td>
+
+            <!-- ✅ COLUMNA SIMPLIFICADA: Entregas -->
+            <td class="col-entregas">
+              <div class="entregas-simple">
+                {{ tarea.totalEntregas || 0 }}
+              </div>
+            </td>
+
+            <!-- ✅ MEJORADA COLUMNA: Documento -->
+            <td class="col-documento">
+              <div class="documento-container">
+                <!-- Con documento -->
+                <button
+                  *ngIf="tieneDocumento(tarea)"
+                  class="btn-documento"
+                  [title]="'Descargar: ' + (tarea.nombreDocumento || 'documento de la tarea')"
+                  (click)="descargarDocumento(tarea.id!, tarea.nombreDocumento || 'documento')"
+                  [disabled]="loading">
+                  <span class="icono-documento">📄</span>
+                  <span class="texto-documento">Descargar</span>
+                </button>
+
+                <!-- Sin documento -->
+                <div *ngIf="!tieneDocumento(tarea)" class="sin-documento">
+                  <span class="icono-sin-doc">📋</span>
+                  <span class="texto-sin-doc">Sin documento</span>
+                </div>
+              </div>
+            </td>
+
+            <!-- Acciones -->
+            <td class="col-acciones">
+              <div class="actions-container">
+                <!-- Ver detalles -->
+                <button
+                  class="btn-action btn-ver"
+                  title="Ver detalles"
+                  (click)="verTarea(tarea.id!)">
+                  <span>👁️</span>
+                </button>
+
+                <!-- Hacer entrega (solo alumnos) -->
+               <button
                 *ngIf="puedeHacerEntrega(tarea)"
-                class="btn-icon btn-entrega"
-                [class.btn-entrega-vencida]="isTareaVencida(tarea)"
-                [title]="isTareaVencida(tarea) ? 'Hacer entrega (FUERA DE PLAZO)' : 'Hacer entrega'"
+                class="btn-action btn-entrega"
+                [title]="'Hacer entrega'"
                 (click)="hacerEntrega(tarea.id!)">
-                <span *ngIf="!isTareaVencida(tarea)">📤</span>
-                <span *ngIf="isTareaVencida(tarea)">⚠️📤</span>
+                <span>📤</span>
               </button>
 
-              <!-- Ver entregas (solo profesores/admin) -->
+              <!-- ✅ NUEVO: Botón deshabilitado para tareas vencidas -->
               <button
-                *ngIf="puedeVerEntregas(tarea)"
-                class="btn-icon btn-entregas"
-                title="Ver entregas"
-                (click)="verEntregasTarea(tarea.id!)">📋</button>
+                *ngIf="esAlumno() && isTareaVencida(tarea) && !puedeHacerEntrega(tarea)"
+                class="btn-action btn-vencida"
+                title="Tarea vencida - No se pueden hacer entregas"
+                disabled>
+                <span>⏰</span>
+              </button>
+                <!-- Ver entregas (solo profesores/admin) -->
+                <button
+                  *ngIf="puedeVerEntregas(tarea)"
+                  class="btn-action btn-entregas"
+                  title="Ver todas las entregas"
+                  (click)="verEntregasTarea(tarea.id!)">
+                  <span>📋</span>
+                </button>
 
-              <!-- Editar -->
-              <button
-                *ngIf="puedeEditarTarea(tarea)"
-                class="btn-icon btn-edit"
-                title="Editar"
-                (click)="editarTarea(tarea.id!)">✏️</button>
+                <!-- Editar -->
+                <button
+                  *ngIf="puedeEditarTarea(tarea)"
+                  class="btn-action btn-editar"
+                  title="Editar tarea"
+                  (click)="editarTarea(tarea.id!)">
+                  <span>✏️</span>
+                </button>
 
-              <!-- Eliminar -->
-              <button
-                *ngIf="puedeEliminarTarea(tarea)"
-                class="btn-icon btn-delete"
-                title="Eliminar"
-                (click)="eliminarTarea(tarea.id!)">🗑️</button>
+                <!-- Eliminar -->
+                <button
+                  *ngIf="puedeEliminarTarea(tarea)"
+                  class="btn-action btn-eliminar"
+                  title="Eliminar tarea"
+                  (click)="eliminarTarea(tarea.id!)">
+                  <span>🗑️</span>
+                </button>
+                <div
+                  *ngIf="esAlumno() && yaEntregoTarea(tarea.id!)"
+                  class="btn-action btn-entregado"
+                  title="Ya has entregado esta tarea">
+                  <span>✅</span>
+                </div>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -225,4 +332,650 @@
   </div>
 </div>
 
+<style>
+/* ===== ESTILOS MEJORADOS ===== */
 
+/* Contenedor principal */
+.tareas-container {
+  max-width: 1320px; /* Optimizado para nueva distribución */
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Cabecera */
+.page-header {
+  margin-bottom: 30px;
+}
+
+.header-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.header-actions h1 {
+  margin: 0;
+  color: #333;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+/* Filtros */
+.filters-container {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 25px;
+}
+
+.search-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  align-items: end;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #555;
+  font-size: 14px;
+}
+
+.form-control {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.form-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Botones */
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #0056b3;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: #545b62;
+}
+
+/* ===== TABLA MEJORADA ===== */
+.table-responsive {
+  margin: 20px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow-x: auto;
+}
+
+.table-simple {
+  width: 100%;
+  min-width: 1120px; /* Optimizado para columna entregas simple */
+  border-collapse: collapse;
+  background: white;
+  margin: 0;
+}
+
+/* ===== COLUMNAS ESPECÍFICAS ===== */
+.table-simple th {
+  background-color: #f8f9fa;
+  color: #495057;
+  font-weight: 600;
+  padding: 12px 8px;
+  text-align: left;
+  border-bottom: 2px solid #dee2e6;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.table-simple td {
+  padding: 12px 8px;
+  border-bottom: 1px solid #dee2e6;
+  vertical-align: top;
+  font-size: 13px;
+}
+
+/* Anchos específicos de columnas */
+.col-id { width: 60px; text-align: center; }
+.col-nombre { width: 200px; }
+.col-curso { width: 150px; }
+.col-profesor { width: 140px; }
+.col-alumnos { width: 180px; }
+.col-fecha { width: 100px; }
+.col-entregas { width: 70px; text-align: center; }
+.col-documento { width: 120px; }
+.col-acciones { width: 160px; }
+
+/* ===== CONTENIDO DE CELDAS ===== */
+
+/* ID */
+.tarea-id {
+  font-weight: 600;
+  color: #007bff;
+  background: #e3f2fd;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+/* Nombre y descripción */
+.tarea-info {
+  line-height: 1.3;
+}
+
+.tarea-nombre {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tarea-descripcion {
+  font-size: 11px;
+  color: #666;
+  font-style: italic;
+  line-height: 1.2;
+}
+
+/* Curso */
+.curso-info {
+  line-height: 1.3;
+}
+
+.curso-nombre {
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.curso-nivel {
+  margin-top: 4px;
+}
+
+/* Profesor */
+.profesor-info {
+  font-weight: 500;
+  color: #333;
+  font-size: 12px;
+}
+
+/* ===== NUEVA SECCIÓN: ALUMNOS ===== */
+.alumnos-info {
+  line-height: 1.2;
+}
+
+.alumnos-todos {
+  text-align: center;
+}
+
+.alumnos-curso {
+  font-size: 10px;
+  color: #666;
+  margin-top: 2px;
+}
+
+.alumnos-especificos {
+  text-align: left;
+}
+
+.lista-alumnos {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nombres-alumnos {
+  margin-top: 4px;
+}
+
+.nombre-alumno {
+  font-size: 10px;
+  color: #555;
+  padding: 1px 4px;
+  background: #f8f9fa;
+  border-radius: 3px;
+  margin-bottom: 2px;
+}
+
+.mas-alumnos {
+  font-size: 10px;
+  color: #007bff;
+  font-style: italic;
+}
+
+.sin-alumnos {
+  text-align: center;
+}
+
+/* ===== BADGES MEJORADOS ===== */
+.badge {
+  display: inline-block;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 12px;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.badge-nivel {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+.badge-todos {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.badge-especificos {
+  background-color: #fff3e0;
+  color: #f57c00;
+}
+
+.badge-warning {
+  background-color: #fff8e1;
+  color: #f57f17;
+}
+
+.badge-vencida {
+  background-color: #ffebee;
+  color: #d32f2f;
+}
+
+/* ===== FECHAS ===== */
+.fecha-info {
+  text-align: center;
+  font-size: 12px;
+}
+
+.fecha-vencida {
+  margin-top: 4px;
+}
+
+/* ===== ENTREGAS SIMPLIFICADAS ===== */
+.entregas-simple {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  min-height: 40px;
+  width: 100%;
+}
+
+/* ===== DOCUMENTO MEJORADO ===== */
+.documento-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 40px;
+}
+
+.btn-documento {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px;
+  background: #e3f2fd;
+  border: 1px solid #2196f3;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  min-width: 80px;
+}
+
+.btn-documento:hover {
+  background: #bbdefb;
+  transform: translateY(-1px);
+}
+
+.btn-documento:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.icono-documento {
+  font-size: 16px;
+}
+
+.texto-documento {
+  font-size: 10px;
+  color: #1976d2;
+  font-weight: 500;
+}
+
+.sin-documento {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: #999;
+  min-width: 80px;
+}
+
+.icono-sin-doc {
+  font-size: 16px;
+  opacity: 0.5;
+}
+
+.texto-sin-doc {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+/* ===== ACCIONES MEJORADAS ===== */
+.actions-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  min-height: 40px;
+}
+
+.btn-action {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.btn-ver {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.btn-ver:hover {
+  background: #bbdefb;
+}
+
+.btn-entrega {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.btn-entrega:hover {
+  background: #c8e6c9;
+}
+
+.btn-vencida {
+  background: #ffebee;
+  color: #d32f2f;
+}
+
+.btn-entregas {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+.btn-entregas:hover {
+  background: #ffe0b2;
+}
+
+.btn-editar {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.btn-editar:hover {
+  background: #e1bee7;
+}
+
+.btn-eliminar {
+  background: #ffebee;
+  color: #d32f2f;
+}
+
+.btn-eliminar:hover {
+  background: #ffcdd2;
+}
+
+/* ===== FILAS CON ESTADOS ===== */
+.row-activa {
+  background-color: rgba(76, 175, 80, 0.05);
+}
+
+.row-vencida {
+  background-color: rgba(244, 67, 54, 0.05);
+}
+
+.row-activa:hover,
+.row-vencida:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* ===== OTROS ESTILOS ===== */
+.text-center {
+  text-align: center;
+}
+
+/* Estados de carga y mensajes */
+.loading-container {
+  text-align: center;
+  padding: 40px;
+}
+
+.spinner {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #007bff;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 10px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.alert {
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+}
+
+.alert-danger {
+  color: #721c24;
+  background-color: #f8d7da;
+  border-color: #f5c6cb;
+}
+
+.alert-success {
+  color: #155724;
+  background-color: #d4edda;
+  border-color: #c3e6cb;
+}
+
+/* Estado vacío */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #666;
+}
+
+.empty-state p {
+  font-size: 18px;
+  margin-bottom: 20px;
+}
+
+/* Info para alumnos */
+.info-alumno {
+  margin-bottom: 25px;
+}
+
+.info-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.info-card h3 {
+  margin: 0 0 10px 0;
+  font-size: 20px;
+}
+
+.info-card p {
+  margin: 0 0 20px 0;
+  opacity: 0.9;
+}
+
+.estadisticas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 20px;
+}
+
+.stat {
+  text-align: center;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.stat .number {
+  display: block;
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+.stat .label {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1120px) {
+  .table-responsive {
+    overflow-x: auto;
+  }
+
+  .actions-container {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .btn-action {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .tareas-container {
+    padding: 15px;
+  }
+
+  .search-form {
+    grid-template-columns: 1fr;
+  }
+
+  .header-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .table-simple {
+    font-size: 11px;
+    min-width: 920px;
+  }
+
+  .table-simple th,
+  .table-simple td {
+    padding: 6px 4px;
+  }
+
+  .estadisticas {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* Ocultar algunas columnas en móvil */
+  .col-profesor,
+  .col-alumnos {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .estadisticas {
+    grid-template-columns: 1fr;
+  }
+
+  /* Ocultar más columnas en pantallas muy pequeñas */
+  .col-entregas {
+    display: none;
+  }
+}
+.btn-entregado {
+  background: #e8f5e9;
+  color: #2e7d32;
+  cursor: default;
+}
+</style>
+
+</body>
+</html>

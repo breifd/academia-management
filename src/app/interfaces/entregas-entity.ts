@@ -38,6 +38,10 @@ export interface EntregaResponseDTO {
   // Metadatos útiles para el frontend
   entregadaATiempo: boolean;
   calificada: boolean;
+
+  nombreDocumentoProfesor?: string;
+  tipoDocumentoProfesor?: string;
+  tieneDocumentoProfesor: boolean;
 }
 
 // Para crear entregas (mapea a EntregaCreateDTO.java)

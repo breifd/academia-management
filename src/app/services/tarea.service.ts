@@ -81,6 +81,11 @@ export class TareaService {
     return this.http.post<TareaResponseDTO>(`${this.apiUrl}/${id}/documento`, formData);
   }
 
+  // NUEVO: Crear tarea con documento en una operación
+  createTareaConDocumento(formData: FormData): Observable<TareaResponseDTO> {
+    return this.http.post<TareaResponseDTO>(`${this.apiUrl}/crear-con-documento`, formData);
+  }
+
   // Descargar documento de una tarea
   downloadDocumento(id: number): Observable<Blob> {
     return this.http.get(`${this.apiUrl}/${id}/documento`, {
@@ -134,7 +139,10 @@ export class TareaService {
 
   // Métodos de utilidad
   tieneDocumento(tarea: TareaResponseDTO): boolean {
-    return tarea.nombreDocumento !== undefined && tarea.nombreDocumento !== null && tarea.nombreDocumento !== '';
+     return tarea.tieneDocumento === true ||
+         (tarea.nombreDocumento !== undefined &&
+          tarea.nombreDocumento !== null &&
+          tarea.nombreDocumento !== '');
   }
 
   formatNota(tarea: TareaResponseDTO): string {

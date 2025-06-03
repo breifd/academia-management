@@ -242,8 +242,51 @@
       <p style="margin: 0; color: #666; line-height: 1.5;">{{ entrega?.comentarios }}</p>
     </div>
 
+    <div style="margin-bottom: 20px; grid-column: span 2;">
+      <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+        Documento de la calificación (opcional)
+      </label>
+
+      <!-- Muestra el documento del profesor si existe -->
+      <div *ngIf="nombreArchivoProfesor" style="margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+        <span class="badge badge-success" style="padding: 6px 12px; background-color: #4caf50; color: white; border-radius: 4px;">
+          📎 {{ nombreArchivoProfesor }}
+        </span>
+        <button
+          type="button"
+          (click)="descargarDocumentoProfesor()"
+          style="background-color: #1976d2; color: white; border: none; border-radius: 4px; padding: 6px 12px; cursor: pointer;"
+          *ngIf="entrega && mode === 'view'">
+          📥 Descargar
+        </button>
+      </div>
+
+      <!-- Selector de archivos para el profesor -->
+      <div *ngIf="mode === 'calificar'" style="display: flex; align-items: center; gap: 10px;">
+        <input
+          type="file"
+          id="documentoProfesor"
+          (change)="onFileProfesorSelected($event)"
+          accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+          style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+      </div>
+
+      <!-- Mensaje informativo sobre el archivo seleccionado -->
+      <div *ngIf="archivoProfesorSeleccionado" style="margin-top: 8px; font-size: 14px; color: #666;">
+        <strong>Archivo seleccionado:</strong> {{ archivoProfesorSeleccionado.name }}
+        ({{ (archivoProfesorSeleccionado.size / 1024).toFixed(2) }} KB)
+      </div>
+
+      <div style="margin-top: 6px; font-size: 12px; color: #666;">
+        💡 Puede adjuntar rúbricas, comentarios detallados o material de retroalimentación
+      </div>
+    </div>
+
+    <!-- REEMPLAZAR la sección de botones en form-entrega.component.html -->
+
     <!-- Botones de acción -->
     <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #eee;">
+
       <!-- Botón Cancelar -->
       <button
         type="button"
@@ -253,18 +296,27 @@
         <span *ngIf="mode !== 'view'">Cancelar</span>
       </button>
 
-      <!-- Botón Guardar/Entregar - solo visible en modos de acción -->
+      <!-- ✅ NUEVO: Botón Editar - solo visible en modo view si se puede editar -->
       <button
-        *ngIf="mode === 'crear' || mode === 'calificar'"
+        *ngIf="mostrarBotonEditar()"
+        type="button"
+        (click)="cambiarAModoEdicion()"
+        style="padding: 10px 20px; background-color: #ff9800; color: white; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; min-width: 120px;">
+        ✏️ Editar
+      </button>
+
+      <!-- ✅ MODIFICADO: Botón Guardar - actualizado para incluir modo edit -->
+      <button
+        *ngIf="mode === 'crear' || mode === 'edit' || mode === 'calificar'"
         type="button"
         (click)="guardar()"
-        [disabled]="loading || (mode === 'crear' && entregaForm.invalid) || (mode === 'calificar' && calificacionForm.invalid)"
+        [disabled]="loading || (mode === 'crear' && entregaForm.invalid) || (mode === 'edit' && entregaForm.invalid) || (mode === 'calificar' && calificacionForm.invalid)"
         style="padding: 10px 20px; background-color: #1e88e5; color: white; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; min-width: 120px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"
         [ngStyle]="{'opacity': loading ? '0.7' : '1', 'cursor': loading ? 'not-allowed' : 'pointer'}">
+
         <span *ngIf="!loading && mode === 'crear'">📤 Entregar</span>
+        <span *ngIf="!loading && mode === 'edit'">💾 Actualizar</span>
         <span *ngIf="!loading && mode === 'calificar'">⭐ Calificar</span>
         <span *ngIf="loading">Procesando...</span>
       </button>
     </div>
-  </div>
-</div>
