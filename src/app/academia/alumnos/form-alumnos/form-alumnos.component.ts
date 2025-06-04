@@ -2,13 +2,13 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { AlumnoEntity } from '../../../interfaces/alumno-entity';
-import { Usuario } from '../../../interfaces/usuario';
+
 import { AlumnoService } from '../../../services/alumno.service';
 import { UsuarioService } from '../../../services/usuario.service';
-import { RolUsuario } from '../../../enum/rol-usuario';
-import { UsuarioDTO } from '../../../interfaces/usuarioDTO';
+
 import { debounceTime, distinctUntilChanged, of, Subject, switchMap, takeUntil } from 'rxjs';
+import { LoginResponse, RolUsuario, UsuarioCreateDTO, UsuarioDTO, UsuarioResponseDTO } from '../../../interfaces/usuario';
+import { AlumnoCreateDTO, AlumnoResponseDTO } from '../../../interfaces/alumno-entity';
 
 export type FormMode = 'view' | 'edit' | 'crear';
 
@@ -24,7 +24,7 @@ export class FormAlumnosComponent implements OnInit {
   alumnoForm: FormGroup;
   usuarioForm: FormGroup;
   crearUsuario: boolean = true; // Siempre true, obligatorio
-  usuarioExistente: Usuario | null = null;
+  usuarioExistente: UsuarioResponseDTO | null = null;
   mode: FormMode = "crear";
   alumnoID: number | null = null;
   loading = false;
@@ -277,21 +277,27 @@ export class FormAlumnosComponent implements OnInit {
     this.error = null;
     this.successMessage = null;
 
-    const alumnoData: AlumnoEntity = {
+    const alumnoData: AlumnoCreateDTO = {
       ...this.alumnoForm.value
     };
 
     // Siempre crear con usuario en modo crear
     if (this.mode === 'crear') {
-      const usuarioData: Usuario = {
+      const usuarioData: UsuarioCreateDTO = {
         username: this.usuarioForm.get('username')?.value,
         password: this.usuarioForm.get('password')?.value,
-        nombre: this.usuarioForm.get('usarMismoNombre')?.value ? alumnoData.nombre : '',
-        apellido: this.usuarioForm.get('usarMismoNombre')?.value ? alumnoData.apellido : '',
+        nombre: this.usuarioForm.get('usarMismoNombre')?.value ? this.alumnoForm.get('nombre')?.value : '',
+        apellido: this.usuarioForm.get('usarMismoNombre')?.value ? this.alumnoForm.get('apellido')?.value : '',
         rol: RolUsuario.ALUMNO
       };
 
-      this.alumnoService.createAlumnoWithUser(alumnoData, usuarioData).subscribe({
+      const alumnoData: AlumnoCreateDTO = {
+      ...this.alumnoForm.value,
+      usuario: usuarioData
+    };
+
+
+      this.alumnoService.createAlumno(alumnoData).subscribe({
         next: () => {
           this.successMessage = 'Alumno creado correctamente';
           this.loading = false;
@@ -335,7 +341,7 @@ export class FormAlumnosComponent implements OnInit {
         this.alumnoService.updateAlumno(this.alumnoID, alumnoData).subscribe({
           next: () => {
             // Luego crear el usuario
-            const usuarioDTO: UsuarioDTO = {
+            const usuarioDTO: UsuarioCreateDTO = {
               username: this.usuarioForm.get('username')?.value || '',
               password: this.usuarioForm.get('password')?.value || '',
               nombre: this.usuarioForm.get('usarMismoNombre')?.value ? alumnoData.nombre : (this.usuarioForm.get('nombre')?.value || ''),
@@ -389,17 +395,31 @@ export class FormAlumnosComponent implements OnInit {
       this.usuarioForm.disable();
     } else {
       this.alumnoForm.enable();
-      if (this.crearUsuario || this.mode === 'crear') {
+       // CAMBIO: Siempre habilitar usuario form en crear, y en edit si no existe usuario
+      if (this.mode === 'crear' || !this.usuarioExistente) {
         this.usuarioForm.enable();
+      } else {
+        // En edit con usuario existente, solo habilitar la opción de sincronización
+        this.usuarioForm.get('usarMismoNombre')?.enable();
+        this.usuarioForm.get('username')?.disable();
+        this.usuarioForm.get('password')?.disable();
+        this.usuarioForm.get('confirmarPassword')?.disable();
       }
     }
   }
-
   cancelar(): void {
     this.router.navigate(['/alumnos']);
   }
 
   getMode(): string {
     return this.mode === 'view' ? 'Ver' : this.mode === 'edit' ? 'Editar' : 'Crear';
+  }
+   shouldShowUsuarioFields(): boolean {
+    return this.mode === 'crear' || (this.mode === 'edit' && !this.usuarioExistente);
+  }
+
+  // HELPER: Determinar si debe mostrar solo sincronización
+  shouldShowSyncOnly(): boolean {
+    return this.mode === 'edit' && this.usuarioExistente !== null;
   }
 }

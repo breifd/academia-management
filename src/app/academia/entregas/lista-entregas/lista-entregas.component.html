@@ -1,0 +1,207 @@
+<div class="entregas-container">
+  <div class="page-header">
+    <div class="header-actions">
+
+    </div>
+  </div>
+
+
+  <div class="page-header">
+    <div class="header-actions">
+      <h1>{{ getHeaderTitle() }}</h1>
+      <!-- ✅ BOTÓN PARA REGRESAR A TAREAS -->
+      <button *ngIf="tareaId" (click)="router.navigate(['/tareas'])" class="btn btn-secondary">
+        ← Volver a Tareas
+      </button>
+      <button *ngIf="alumnoId" (click)="router.navigate(['/alumnos'])" class="btn btn-secondary">
+        ← Volver a Alumnos
+      </button>
+    </div>
+  </div>
+
+  <div class="filters-container">
+    <div class="tabs">
+      <button
+        class="tab-button"
+        [class.active]="activeTab === 'todas'"
+        (click)="setActiveTab('todas')">
+        <span *ngIf="esProfesor() && !tareaId">Todas mis entregas</span>
+        <span *ngIf="esProfesor() && tareaId">Todas las entregas</span>
+        <span *ngIf="esAlumno()">Todas mis entregas</span>
+        <span *ngIf="esAdmin()">Todas las entregas</span>
+      </button>
+      <button
+        *ngIf="esProfesor()"
+        class="tab-button"
+        [class.active]="activeTab === 'pendientes'"
+        (click)="setActiveTab('pendientes')">
+        Pendientes de calificar
+      </button>
+      <button
+        class="tab-button"
+        [class.active]="activeTab === 'calificadas'"
+        (click)="setActiveTab('calificadas')">
+        Calificadas
+      </button>
+    </div>
+
+    <div class="search-form">
+      <div class="form-group">
+        <label for="estadoFilter">Filtrar por estado</label>
+        <select
+          id="estadoFilter"
+          [(ngModel)]="estadoFilter"
+          class="form-control">
+          <option value="">Todos los estados</option>
+          <option [value]="estadoEntrega.PENDIENTE">Pendiente</option>
+          <option [value]="estadoEntrega.ENTREGADA">Entregada</option>
+          <option [value]="estadoEntrega.CALIFICADA">Calificada</option>
+          <option [value]="estadoEntrega.FUERA_PLAZO">Fuera de plazo</option>
+        </select>
+      </div>
+
+      <div class="form-buttons">
+        <button (click)="search()" class="btn btn-primary">Filtrar</button>
+        <button (click)="resetFilters()" class="btn btn-secondary">Limpiar</button>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Cargando entregas...</p>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger">
+    {{ error }}
+  </div>
+
+  <div *ngIf="successMessage" class="alert alert-success">
+    {{ successMessage }}
+  </div>
+
+  <div *ngIf="!loading && !error">
+    <div *ngIf="entregas.length === 0" class="empty-state">
+      <p *ngIf="esProfesor()">No tienes entregas para revisar.</p>
+      <p *ngIf="esAlumno()">No tienes entregas registradas.</p>
+      <p *ngIf="esAdmin()">No se encontraron entregas en el sistema.</p>
+    </div>
+
+    <div *ngIf="entregas.length > 0" class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Tarea</th>
+            <th *ngIf="!esAlumno()">Alumno</th>
+            <th *ngIf="esAdmin()">Profesor</th>
+            <th>Fecha Entrega</th>
+            <th>Estado</th>
+            <th>Nota</th>
+            <th>Documento</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let entrega of entregas"
+              [class.entrega-vencida]="entrega.estado === estadoEntrega.FUERA_PLAZO"
+              [class.entrega-calificada]="entrega.estado === estadoEntrega.CALIFICADA">
+            <td>{{ entrega.id }}</td>
+            <td>{{ entrega.tarea?.nombre || 'N/A' }}</td>
+            <td *ngIf="!esAlumno()">
+              {{ entrega.alumno?.nombre }} {{ entrega.alumno?.apellido }}
+            </td>
+            <td *ngIf="esAdmin()">
+              {{ entrega.tarea?.profesor?.nombre }} {{ entrega.tarea?.profesor?.apellido }}
+            </td>
+            <td>{{ formatFecha(entrega.fechaEntrega) }}</td>
+            <td>
+              <span
+                class="badge estado-badge"
+                [style.background-color]="getEstadoColor(entrega.estado)"
+                [style.color]="'white'">
+                {{ getEstadoTexto(entrega.estado) }}
+              </span>
+            </td>
+            <td class="col-nota">
+              <div class="nota-container">
+                <span
+                  [class]="'nota-badge ' + (entregaService.esEntregaAutomaticaPorVencimiento(entrega) ? 'nota-automatica' : 'nota-normal')"
+                  [style.background-color]="getEstadoColorDetallado(entrega)">
+                  {{ entregaService.formatNota(entrega) }}
+                </span>
+
+                <!-- ✅ Indicador visual para entregas automáticas -->
+                <div *ngIf="entregaService.esEntregaAutomaticaPorVencimiento(entrega)"
+                    class="indicador-automatica"
+                    title="Entrega generada automáticamente por vencimiento">
+                  🤖 Automática
+                </div>
+              </div>
+            </td>
+            <td>
+              <div *ngIf="tieneDocumento(entrega)">
+                <span class="badge badge-success">Documento disponible</span>
+                <button
+                  class="btn-icon btn-download"
+                  title="Descargar documento"
+                  (click)="descargarDocumento(entrega.id!)">📥</button>
+              </div>
+              <div *ngIf="tieneDocumentoProfesor(entrega)">
+                <span class="badge badge-info">📄 Documento del profesor</span>
+                <button
+                  class="btn-icon btn-download"
+                  title="Descargar documento del profesor"
+                  (click)="descargarDocumentoProfesor(entrega.id!)">📥</button>
+              </div>
+              <span *ngIf="!tieneDocumento(entrega)" class="badge badge-warning">Sin documento</span>
+            </td>
+            <td class="actions-cell">
+              <!-- Ver detalles -->
+              <button
+                class="btn-icon btn-view"
+                title="Ver detalles"
+                (click)="verEntrega(entrega.id!)">👁️</button>
+
+              <!-- ✅ Calificar entrega (solo profesores) -->
+              <button
+                *ngIf="puedeCalificarEntrega(entrega)"
+                class="btn-icon btn-grade"
+                title="Calificar entrega"
+                (click)="calificarEntrega(entrega.id!)"
+                style="background-color: #4caf50; color: white; margin-left: 5px;">⭐</button>
+
+              <!-- ✅ ACTUALIZADO: Editar (admin Y alumnos para sus entregas) -->
+              <button
+                *ngIf="puedeEditarEntrega(entrega)"
+                class="btn-icon btn-edit"
+                [title]="esAlumno() ? 'Editar mi entrega' : 'Editar entrega'"
+                (click)="editarEntrega(entrega.id!)"
+                [style.background-color]="esAlumno() ? '#2196f3' : '#ff9800'"
+                style="color: white; margin-left: 5px;">
+                {{ esAlumno() ? '📝' : '✏️' }}
+              </button>
+
+              <!-- Eliminar (solo admin) -->
+              <button
+                *ngIf="puedeEliminarEntrega()"
+                class="btn-icon btn-delete"
+                title="Eliminar"
+                (click)="eliminarEntrega(entrega.id!)">🗑️</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <app-pagination
+        *ngIf="page"
+        [currentPage]="currentPage"
+        [totalPages]="page.totalPages"
+        [pageSize]="pageSize"
+        [totalElements]="page.totalElements"
+        (pageChange)="onPageChange($event)">
+      </app-pagination>
+    </div>
+  </div>
+</div>
+

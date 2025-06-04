@@ -1,0 +1,721 @@
+<div class="perfil-container">
+  <!-- Cabecera del perfil -->
+  <div class="perfil-header">
+    <div class="header-content">
+      <div class="user-info">
+        <div class="avatar">
+          <span class="avatar-text">{{ (usuario?.nombre || 'U')[0].toUpperCase() }}{{ (usuario?.apellido || 'S')[0].toUpperCase() }}</span>
+        </div>
+        <div class="user-details">
+          <h1 class="welcome-message">{{ getWelcomeMessage() }}</h1>
+          <p class="user-role">{{ getRoleDisplayName() }}</p>
+          <p class="user-username" *ngIf="usuario?.username">{{ usuario?.username }}</p>
+        </div>
+      </div>
+      <div class="quick-stats" *ngIf="activeTab === 'estadisticas'">
+        <div class="stat-item">
+          <span class="stat-number">{{ estadisticas.totalCursos }}</span>
+          <span class="stat-label">Cursos</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">{{ estadisticas.totalTareas }}</span>
+          <span class="stat-label">Tareas</span>
+        </div>
+        <div class="stat-item" *ngIf="esAlumno()">
+          <span class="stat-number">{{ estadisticas.promedioNotas?.toFixed(1) || 'N/A' }}</span>
+          <span class="stat-label">Promedio</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navegación por pestañas -->
+  <div class="tabs-navigation">
+    <button
+      *ngFor="let tab of getTabs()"
+      class="tab-button"
+      [class.active]="activeTab === tab.key"
+      (click)="changeTab(tab.key)">
+      <span class="tab-icon">{{ tab.icon }}</span>
+      <span class="tab-label">{{ tab.label }}</span>
+    </button>
+  </div>
+
+  <!-- Mensajes de estado -->
+  <div *ngIf="error" class="alert alert-error">
+    <span class="alert-icon">⚠️</span>
+    <span>{{ error }}</span>
+  </div>
+
+  <div *ngIf="successMessage" class="alert alert-success">
+    <span class="alert-icon">✅</span>
+    <span>{{ successMessage }}</span>
+  </div>
+
+  <!-- Contenido de las pestañas -->
+  <div class="tab-content">
+
+    <!-- PESTAÑA: PERFIL -->
+    <div *ngIf="activeTab === 'perfil'" class="perfil-tab">
+      <div class="content-grid">
+        <!-- Formulario de datos personales -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Información Personal</h3>
+          </div>
+          <div class="card-content">
+            <form [formGroup]="perfilForm" (ngSubmit)="actualizarPerfil()">
+              <div class="form-grid">
+                <!-- Nombre -->
+                <div class="form-group">
+                  <label for="nombre">Nombre *</label>
+                  <input
+                    type="text"
+                    id="nombre"
+                    formControlName="nombre"
+                    [class.error]="perfilForm.get('nombre')?.invalid && perfilForm.get('nombre')?.touched">
+                  <div *ngIf="perfilForm.get('nombre')?.invalid && perfilForm.get('nombre')?.touched" class="error-message">
+                    El nombre es obligatorio
+                  </div>
+                </div>
+
+                <!-- Apellido -->
+                <div class="form-group">
+                  <label for="apellido">Apellido *</label>
+                  <input
+                    type="text"
+                    id="apellido"
+                    formControlName="apellido"
+                    [class.error]="perfilForm.get('apellido')?.invalid && perfilForm.get('apellido')?.touched">
+                  <div *ngIf="perfilForm.get('apellido')?.invalid && perfilForm.get('apellido')?.touched" class="error-message">
+                    El apellido es obligatorio
+                  </div>
+                </div>
+
+                <!-- Email -->
+                <div class="form-group">
+                  <label for="email">Email</label>
+                  <input
+                    type="email"
+                    id="email"
+                    formControlName="email"
+                    [class.error]="perfilForm.get('email')?.invalid && perfilForm.get('email')?.touched">
+                  <div *ngIf="perfilForm.get('email')?.invalid && perfilForm.get('email')?.touched" class="error-message">
+                    Ingrese un email válido
+                  </div>
+                </div>
+
+                <!-- Teléfono -->
+                <div class="form-group">
+                  <label for="telefono">Teléfono</label>
+                  <input type="tel" id="telefono" formControlName="telefono">
+                </div>
+
+                <!-- Campos específicos para profesor -->
+                <div *ngIf="esProfesor()" class="form-group">
+                  <label for="especialidad">Especialidad</label>
+                  <input type="text" id="especialidad" formControlName="especialidad">
+                </div>
+
+                <div *ngIf="esProfesor()" class="form-group">
+                  <label for="anhosExperiencia">Años de Experiencia</label>
+                  <input type="number" id="anhosExperiencia" formControlName="anhosExperiencia" min="0">
+                </div>
+
+                <!-- Campo específico para alumno -->
+                <div *ngIf="esAlumno()" class="form-group">
+                  <label for="fechaNacimiento">Fecha de Nacimiento</label>
+                  <input type="date" id="fechaNacimiento" formControlName="fechaNacimiento">
+                </div>
+
+                <!-- Dirección - span 2 columnas -->
+                <div class="form-group full-width">
+                  <label for="direccion">Dirección</label>
+                  <textarea id="direccion" formControlName="direccion" rows="2"></textarea>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button
+                  type="submit"
+                  class="btn btn-primary"
+                  [disabled]="loading || perfilForm.invalid">
+                  <span *ngIf="!loading">💾 Actualizar Perfil</span>
+                  <span *ngIf="loading">⏳ Guardando...</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Formulario de cambio de contraseña -->
+        <!-- Formulario de cambio de contraseña -->
+          <div class="card">
+            <div class="card-header">
+              <h3>Cambiar Contraseña</h3>
+            </div>
+            <div class="card-content">
+              <form [formGroup]="passwordForm" (ngSubmit)="cambiarPassword()">
+                <div class="form-group">
+                  <label for="passwordActual">Contraseña Actual</label>
+                  <input
+                    type="password"
+                    id="passwordActual"
+                    formControlName="passwordActual"
+                    [class.error]="passwordForm.get('passwordActual')?.invalid && passwordForm.get('passwordActual')?.touched">
+                  <div *ngIf="passwordForm.get('passwordActual')?.hasError('required') && passwordForm.get('passwordActual')?.touched" class="error-message">
+                    La contraseña actual es obligatoria
+                  </div>
+                  <div *ngIf="passwordForm.get('passwordActual')?.hasError('incorrect')" class="error-message">
+                    La contraseña actual no es correcta
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="passwordNueva">Nueva Contraseña</label>
+                  <input
+                    type="password"
+                    id="passwordNueva"
+                    formControlName="passwordNueva"
+                    [class.error]="passwordForm.get('passwordNueva')?.invalid && passwordForm.get('passwordNueva')?.touched">
+                  <div *ngIf="passwordForm.get('passwordNueva')?.invalid && passwordForm.get('passwordNueva')?.touched" class="error-message">
+                    La contraseña debe tener al menos 6 caracteres
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="confirmarPassword">Confirmar Nueva Contraseña</label>
+                  <input
+                    type="password"
+                    id="confirmarPassword"
+                    formControlName="confirmarPassword"
+                    [class.error]="passwordForm.get('confirmarPassword')?.invalid && passwordForm.get('confirmarPassword')?.touched">
+                  <div *ngIf="passwordForm.hasError('passwordMismatch') && passwordForm.get('confirmarPassword')?.touched" class="error-message">
+                    Las contraseñas no coinciden
+                  </div>
+                </div>
+
+                <div class="form-actions">
+                  <button
+                    type="submit"
+                    class="btn btn-secondary"
+                    [disabled]="loading || passwordForm.invalid">
+                    <span *ngIf="!loading">🔐 Cambiar Contraseña</span>
+                    <span *ngIf="loading">⏳ Cambiando...</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PESTAÑA: CURSOS -->
+    <div *ngIf="activeTab === 'cursos'" class="cursos-tab">
+      <div class="section-header">
+        <h2>
+          <span *ngIf="esAlumno()">📚 Mis Cursos</span>
+          <span *ngIf="esProfesor()">🎓 Cursos que Imparto</span>
+          <span *ngIf="esAdmin()">🏫 Todos los Cursos</span>
+        </h2>
+        <div class="section-count">{{ cursos.length }} curso(s)</div>
+      </div>
+
+      <div *ngIf="loadingCursos" class="loading-state">
+        <div class="spinner"></div>
+        <span>Cargando cursos...</span>
+      </div>
+
+      <div *ngIf="!loadingCursos && cursos.length === 0" class="empty-state">
+        <div class="empty-icon">📚</div>
+        <h3>No hay cursos disponibles</h3>
+        <p *ngIf="esAlumno()">Aún no estás matriculado en ningún curso.</p>
+        <p *ngIf="esProfesor()">Aún no tienes cursos asignados.</p>
+      </div>
+
+      <div class="cards-grid" *ngIf="!loadingCursos && cursos.length > 0">
+        <div *ngFor="let curso of cursos" class="course-card" (click)="irACurso(curso.id)">
+          <div class="course-header">
+            <h3>{{ curso.nombre }}</h3>
+            <span class="course-level" [class]="'level-' + (curso.nivel?.toLowerCase() || 'basico')">
+              {{ curso.nivel || 'Básico' }}
+            </span>
+          </div>
+          <div class="course-content">
+            <p *ngIf="curso.descripcion">{{ curso.descripcion }}</p>
+            <div class="course-stats">
+              <span class="stat">👥 {{ curso.totalAlumnos }} alumnos</span>
+              <span class="stat">👨‍🏫 {{ curso.totalProfesores }} profesor(es)</span>
+              <span class="stat">📝 {{ curso.totalTareas }} tareas</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- PESTAÑA: TAREAS -->
+    <div *ngIf="activeTab === 'tareas'" class="tareas-tab">
+      <div class="section-header">
+        <h2>
+          <span *ngIf="esAlumno()">📝 Mis Tareas</span>
+          <span *ngIf="esProfesor()">📋 Tareas Creadas</span>
+          <span *ngIf="esAdmin()">📚 Todas las Tareas</span>
+        </h2>
+        <div class="section-actions">
+          <button *ngIf="esProfesor()" class="btn btn-primary" (click)="crearTarea()">
+            ➕ Nueva Tarea
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="loadingTareas" class="loading-state">
+        <div class="spinner"></div>
+        <span>Cargando tareas...</span>
+      </div>
+
+      <div *ngIf="!loadingTareas && tareas.length === 0" class="empty-state">
+        <div class="empty-icon">📝</div>
+        <h3>No hay tareas disponibles</h3>
+      </div>
+
+      <div class="tasks-list" *ngIf="!loadingTareas && tareas.length > 0">
+        <div *ngFor="let tarea of tareas" class="task-card" (click)="irATarea(tarea.id)">
+          <div class="task-header">
+            <h3>{{ tarea.nombre }}</h3>
+            <div class="task-badges">
+              <span *ngIf="isTareaVencida(tarea)" class="badge badge-danger">⚠️ Vencida</span>
+              <span *ngIf="!isTareaVencida(tarea)" class="badge badge-success">✅ Activa</span>
+            </div>
+          </div>
+          <div class="task-content">
+            <p *ngIf="tarea.descripcion">{{ tarea.descripcion }}</p>
+            <div class="task-info">
+              <div class="info-item">
+                <strong>Curso:</strong> {{ tarea.curso?.nombre }}
+              </div>
+              <div class="info-item" *ngIf="tarea.fechaLimite">
+                <strong>Fecha límite:</strong> {{ formatFecha(tarea.fechaLimite) }}
+              </div>
+              <div class="info-item" *ngIf="esProfesor()">
+                <strong>Entregas:</strong> {{ tarea.totalEntregas }}
+              </div>
+            </div>
+          </div>
+          <div class="task-actions" *ngIf="esAlumno() && !isTareaVencida(tarea)">
+            <button class="btn btn-small btn-primary" (click)="hacerEntrega(tarea.id); $event.stopPropagation()">
+              📤 Hacer Entrega
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REEMPLAZAR la sección "PESTAÑA: ENTREGAS" en mi-perfil.component.html -->
+
+    <!-- PESTAÑA: ENTREGAS -->
+    <div *ngIf="activeTab === 'entregas'" class="entregas-tab">
+      <div class="section-header">
+        <h2>
+          <span *ngIf="esAlumno()">📤 Mis Entregas</span>
+          <span *ngIf="esProfesor()">📋 Entregas de Mis Tareas</span>
+          <span *ngIf="esAdmin()">📦 Todas las Entregas</span>
+        </h2>
+        <div class="section-actions">
+          <!-- ✅ NUEVO: Botón para alumnos -->
+          <button *ngIf="esAlumno()" class="btn btn-primary" (click)="verTodasMisEntregas()">
+            📊 Ver Lista Completa de Mis Entregas
+          </button>
+          <!-- Botón existente para profesores -->
+          <button *ngIf="esProfesor()" class="btn btn-primary" (click)="router.navigate(['/entregas'])">
+            📊 Ver Lista Completa
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="esAlumno() && !loadingEntregas && entregasMostradas.length > 0" class="alumno-entregas-resumen">
+      <div class="resumen-stats">
+        <div class="stat-item calificadas">
+          <div class="stat-number">{{ getEntregasCalificadasAlumno() }}</div>
+          <div class="stat-label">Calificadas</div>
+        </div>
+        <div class="stat-item pendientes">
+          <div class="stat-number">{{ getEntregasPendientesAlumno() }}</div>
+          <div class="stat-label">Pendientes</div>
+        </div>
+        <div class="stat-item promedio" *ngIf="getPromedioNotasAlumno() > 0">
+          <div class="stat-number">{{ getPromedioNotasAlumno().toFixed(1) }}</div>
+          <div class="stat-label">Promedio</div>
+        </div>
+      </div>
+
+      <div class="mensaje-motivacional" *ngIf="getMensajeMotiacional()">
+          <div class="mensaje-content">
+            <span class="mensaje-icon">{{ getMensajeMotiacional()?.icon }}</span>
+            <span class="mensaje-text">{{ getMensajeMotiacional()?.texto }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ✅ FILTROS MEJORADOS PARA PROFESORES -->
+      <div *ngIf="esProfesor() && !loadingEntregas" class="filters-section">
+        <div class="filters-row">
+          <div class="filter-group">
+            <label for="estadoFilter">Estado:</label>
+            <select
+              id="estadoFilter"
+              [(ngModel)]="filtroEstadoEntregas"
+              (change)="onFiltroEstadoChange()"
+              class="form-control">
+              <option value="todos">Todos los estados</option>
+              <option [value]="estadoEntrega.PENDIENTE">Pendientes</option>
+              <option [value]="estadoEntrega.ENTREGADA">Entregadas (Sin calificar)</option>
+              <option [value]="estadoEntrega.CALIFICADA">Calificadas</option>
+              <option [value]="estadoEntrega.FUERA_PLAZO">Fuera de plazo</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="busquedaFilter">Buscar:</label>
+            <input
+              type="text"
+              id="busquedaFilter"
+              [(ngModel)]="filtroBusquedaEntregas"
+              (input)="onBusquedaChange()"
+              placeholder="Alumno o tarea..."
+              class="form-control">
+          </div>
+
+          <div class="filter-actions">
+            <button (click)="limpiarFiltrosEntregas()" class="btn btn-secondary">
+              🗑️ Limpiar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ✅ ESTADÍSTICAS PARA PROFESORES -->
+      <div *ngIf="esProfesor() && !loadingEntregas && entregasMostradas.length > 0" class="entregas-stats">
+        <div class="stats-row">
+          <div class="stat-box pendientes">
+            <div class="stat-number">{{ getEstadisticasEntregasDetalladas().pendientes }}</div>
+            <div class="stat-label">Sin entregar</div>
+          </div>
+          <div class="stat-box entregadas">
+            <div class="stat-number">{{ getEstadisticasEntregasDetalladas().entregadas }}</div>
+            <div class="stat-label">Pendientes calificar</div>
+          </div>
+          <div class="stat-box calificadas">
+            <div class="stat-number">{{ getEstadisticasEntregasDetalladas().calificadas }}</div>
+            <div class="stat-label">Calificadas</div>
+          </div>
+          <div class="stat-box fuera-plazo">
+            <div class="stat-number">{{ getEstadisticasEntregasDetalladas().fueraPlazo }}</div>
+            <div class="stat-label">Fuera de plazo</div>
+          </div>
+          <div class="stat-box promedio">
+            <div class="stat-number">{{ getEstadisticasEntregasDetalladas().promedioNotas.toFixed(1) }}</div>
+            <div class="stat-label">Promedio notas</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ✅ VISTA RÁPIDA DE ALUMNOS (SOLO PROFESORES) -->
+      <div *ngIf="esProfesor() && !loadingEntregas && getAlumnosUnicos().length > 0" class="alumnos-resumen">
+        <h3>👥 Resumen por Alumno</h3>
+        <div class="alumnos-cards">
+          <div *ngFor="let alumno of getAlumnosUnicos().slice(0, 6)"
+              class="alumno-card"
+              (click)="verEntregasDeAlumno(alumno.id)">
+            <div class="alumno-nombre">{{ alumno.nombre }} {{ alumno.apellido }}</div>
+            <div class="alumno-stats">{{ alumno.totalEntregas }} entregas</div>
+          </div>
+          <div *ngIf="getAlumnosUnicos().length > 6" class="alumno-card more">
+            <div class="more-text">+{{ getAlumnosUnicos().length - 6 }} más</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ✅ VISTA RÁPIDA DE TAREAS CON ENTREGAS PENDIENTES (SOLO PROFESORES) -->
+      <div *ngIf="esProfesor() && !loadingEntregas && getTareasConEntregas().length > 0" class="tareas-pendientes">
+        <h3>⏰ Tareas con Entregas Pendientes de Calificar</h3>
+        <div class="tareas-pendientes-list">
+          <div *ngFor="let tarea of getTareasConEntregas().slice(0, 4)"
+              class="tarea-pendiente-item"
+              (click)="verEntregasDeTarea(tarea.id)">
+            <div class="tarea-info">
+              <div class="tarea-nombre">{{ tarea.nombre }}</div>
+              <div class="tarea-stats">
+                <span class="total">{{ tarea.totalEntregas }} entregas</span>
+                <span *ngIf="tarea.pendientesCalificacion > 0" class="pendientes">
+                  {{ tarea.pendientesCalificacion }} pendientes
+                </span>
+              </div>
+            </div>
+            <div class="tarea-action">
+              <span class="badge badge-warning" *ngIf="tarea.pendientesCalificacion > 0">
+                ⏰ {{ tarea.pendientesCalificacion }}
+              </span>
+              <span class="badge badge-success" *ngIf="tarea.pendientesCalificacion === 0">
+                ✅ Al día
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ✅ LOADING STATE -->
+      <div *ngIf="loadingEntregas" class="loading-state">
+        <div class="spinner"></div>
+        <span>Cargando entregas...</span>
+      </div>
+
+      <!-- ✅ EMPTY STATE -->
+      <div *ngIf="!loadingEntregas && entregasMostradas.length === 0" class="empty-state">
+        <div class="empty-icon">📤</div>
+        <h3>No hay entregas disponibles</h3>
+        <p *ngIf="esAlumno()">Aún no tienes entregas registradas.</p>
+        <p *ngIf="esProfesor() && filtroEstadoEntregas === 'todos'">
+          Aún no hay entregas para tus tareas.
+        </p>
+        <p *ngIf="esProfesor() && filtroEstadoEntregas !== 'todos'">
+          No hay entregas con el estado seleccionado.
+        </p>
+        <button *ngIf="filtroEstadoEntregas !== 'todos'"
+                (click)="limpiarFiltrosEntregas()"
+                class="btn btn-secondary">
+          Ver todas las entregas
+        </button>
+      </div>
+
+      <!-- ✅ LISTA DE ENTREGAS -->
+      <div class="deliveries-list" *ngIf="!loadingEntregas && entregasMostradas.length > 0">
+        <div *ngFor="let entrega of entregasMostradas.slice(0, 10)" class="delivery-card enhanced">
+
+          <!-- Header de la entrega -->
+          <div class="delivery-header">
+            <div class="delivery-title">
+              <h3 (click)="irAEntrega(entrega.id)" class="tarea-link">
+                {{ entrega.tarea?.nombre || 'Tarea sin nombre' }}
+              </h3>
+              <span class="status-badge" [style.background-color]="getEstadoColor(entrega.estado)">
+                {{ getEstadoTexto(entrega.estado) }}
+              </span>
+            </div>
+
+            <!-- Indicador de urgencia para profesores -->
+            <div *ngIf="esProfesor() && entrega.estado === estadoEntrega.ENTREGADA" class="urgencia-indicator">
+              🔥 Requiere calificación
+            </div>
+          </div>
+
+          <!-- Contenido principal -->
+          <div class="delivery-content">
+            <div class="delivery-info">
+              <!-- Info del alumno (para profesores) -->
+              <div class="info-item" *ngIf="esProfesor() || esAdmin()">
+                <strong>👤 Alumno:</strong>
+                <span class="alumno-name" (click)="verEntregasDeAlumno(entrega.alumno?.id!)">
+                  {{ entrega.alumno?.nombre }} {{ entrega.alumno?.apellido }}
+                </span>
+              </div>
+
+              <!-- Fecha de entrega -->
+              <div class="info-item" *ngIf="entrega.fechaEntrega">
+                <strong>📅 Entregado:</strong> {{ formatFecha(entrega.fechaEntrega) }}
+              </div>
+
+              <!-- Nota -->
+              <div class="info-item" *ngIf="entrega.nota !== undefined && entrega.nota !== null">
+                <strong>📊 Nota:</strong>
+                <span class="grade" [class.grade-high]="entrega.nota >= 7" [class.grade-low]="entrega.nota < 5">
+                  {{ entrega.nota.toFixed(1) }}/10
+                </span>
+              </div>
+
+              <!-- Comentarios -->
+              <div class="info-item" *ngIf="entrega.comentarios">
+                <strong>💬 Comentarios:</strong>
+                <span class="comentarios">{{ entrega.comentarios }}</span>
+              </div>
+
+              <!-- Documento -->
+              <div class="info-item documento-info">
+                <strong>📎 Documento:</strong>
+                <span *ngIf="entrega.tieneDocumento" class="documento-disponible">
+                  ✅ {{ entrega.nombreDocumento }}
+                </span>
+                <span *ngIf="!entrega.tieneDocumento" class="documento-faltante">
+                  ❌ Sin documento
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Acciones -->
+          <div class="delivery-actions">
+            <!-- Acciones para profesores -->
+            <div *ngIf="esProfesor()" class="profesor-actions">
+              <!-- Calificación rápida -->
+              <div *ngIf="entrega.estado === estadoEntrega.ENTREGADA" class="calificacion-rapida">
+                <span class="quick-grade-label">Calificación rápida:</span>
+                <div class="quick-grade-buttons">
+                  <button
+                    *ngFor="let nota of [10, 9, 8, 7, 6, 5]"
+                    (click)="calificarRapidamente(entrega.id, nota); $event.stopPropagation()"
+                    class="btn-quick-grade"
+                    [class.btn-excellent]="nota >= 9"
+                    [class.btn-good]="nota >= 7 && nota < 9"
+                    [class.btn-average]="nota >= 5 && nota < 7"
+                    [class.btn-poor]="nota < 5">
+                    {{ nota }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Botón de calificar detallado -->
+              <button
+                *ngIf="entrega.estado === estadoEntrega.ENTREGADA"
+                class="btn btn-primary"
+                (click)="calificarEntrega(entrega.id); $event.stopPropagation()">
+                ⭐ Calificar Detallado
+            </button>
+
+
+            <!-- Acciones para alumnos -->
+            <div *ngIf="esAlumno()" class="alumno-actions">
+              <button
+                class="btn btn-primary"
+                (click)="irAEntrega(entrega.id); $event.stopPropagation()">
+                👁️ Ver Detalles
+              </button>
+            </div>
+
+            <!-- Ver detalles (general) -->
+            <button
+              class="btn btn-outline"
+              (click)="irAEntrega(entrega.id); $event.stopPropagation()">
+              📋 Ver Completo
+            </button>
+          </div>
+        </div>
+
+        <!-- Mostrar más entregas -->
+        <div *ngIf="entregasMostradas.length > 10" class="show-more-section">
+          <p>Mostrando 10 de {{ entregasMostradas.length }} entregas</p>
+
+          <!-- Diferentes botones según el rol -->
+          <button *ngIf="esAlumno()" class="btn btn-outline" (click)="verTodasMisEntregas()">
+            📚 Ver Todas Mis Entregas
+          </button>
+          <button *ngIf="esProfesor()" class="btn btn-outline" (click)="router.navigate(['/entregas'])">
+            📊 Ver Todas las Entregas
+          </button>
+          <button *ngIf="esAdmin()" class="btn btn-outline" (click)="router.navigate(['/entregas'])">
+            📦 Ver Todas las Entregas del Sistema
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+    <!-- PESTAÑA: ESTADÍSTICAS -->
+    <div *ngIf="activeTab === 'estadisticas'" class="estadisticas-tab">
+      <div class="section-header">
+        <h2>📊 Estadísticas</h2>
+      </div>
+
+      <div class="stats-grid">
+        <!-- Estadísticas generales -->
+        <div class="stat-card">
+          <div class="stat-icon">👥</div>
+          <div class="stat-content">
+            <div class="stat-number">{{ estadisticas.totalCursos }}</div>
+            <div class="stat-label">
+              <span *ngIf="esAlumno()">Cursos Matriculado</span>
+              <span *ngIf="esProfesor()">Cursos Impartiendo</span>
+              <span *ngIf="esAdmin()">Total Cursos</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon">📝</div>
+          <div class="stat-content">
+            <div class="stat-number">{{ estadisticas.totalTareas }}</div>
+            <div class="stat-label">
+              <span *ngIf="esAlumno()">Tareas Asignadas</span>
+              <span *ngIf="esProfesor()">Tareas Creadas</span>
+              <span *ngIf="esAdmin()">Total Tareas</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon">📤</div>
+          <div class="stat-content">
+            <div class="stat-number">{{ estadisticas.totalEntregas }}</div>
+            <div class="stat-label">
+              <span *ngIf="esAlumno()">Entregas Realizadas</span>
+              <span *ngIf="esProfesor()">Entregas Recibidas</span>
+              <span *ngIf="esAdmin()">Total Entregas</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Estadísticas específicas para alumnos -->
+        <div *ngIf="esAlumno() && estadisticas.promedioNotas !== undefined" class="stat-card highlight">
+          <div class="stat-icon">🎯</div>
+          <div class="stat-content">
+            <div class="stat-number">{{ estadisticas.promedioNotas.toFixed(1) }}</div>
+            <div class="stat-label">Promedio de Notas</div>
+          </div>
+        </div>
+
+        <!-- Estadísticas de tareas -->
+        <div class="stat-card">
+          <div class="stat-icon">✅</div>
+          <div class="stat-content">
+            <div class="stat-number">{{ estadisticas.tareasActivas }}</div>
+            <div class="stat-label">Tareas Activas</div>
+          </div>
+        </div>
+
+        <div class="stat-card" *ngIf="estadisticas.tareasVencidas > 0">
+          <div class="stat-icon">⚠️</div>
+          <div class="stat-content">
+            <div class="stat-number">{{ estadisticas.tareasVencidas }}</div>
+            <div class="stat-label">Tareas Vencidas</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gráfico de progreso para alumnos -->
+      <div class="progress-section" *ngIf="esAlumno()">
+        <h3>Progreso de Entregas</h3>
+        <div class="progress-cards">
+          <div class="progress-card">
+            <div class="progress-header">
+              <span>Entregas Calificadas</span>
+              <span>{{ estadisticas.entregasCalificadas }}/{{ estadisticas.totalEntregas }}</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill"
+                   [style.width.%]="estadisticas.totalEntregas > 0 ? (estadisticas.entregasCalificadas / estadisticas.totalEntregas) * 100 : 0">
+              </div>
+            </div>
+          </div>
+
+          <div class="progress-card">
+            <div class="progress-header">
+              <span>Entregas Pendientes</span>
+              <span>{{ estadisticas.entregasPendientes }}/{{ estadisticas.totalEntregas }}</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill warning"
+                   [style.width.%]="estadisticas.totalEntregas > 0 ? (estadisticas.entregasPendientes / estadisticas.totalEntregas) * 100 : 0">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -2,8 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
-import { LoginRequest } from '../../../interfaces/login-request';
+
 import { CommonModule } from '@angular/common';
+import { LoginRequest } from '../../../interfaces/usuario';
 
 @Component({
   selector: 'app-login',
@@ -62,9 +63,13 @@ export class LoginComponent implements OnInit {
       password: this.loginForm.get('password')?.value
     };
     console.log(loginRequest);
+    console.log('Username exacto:', loginRequest.username);
+    console.log('Password length:', loginRequest.password.length);
+    console.log('Primeros 3 caracteres del password:', loginRequest.password.substring(0, 3))
     // Llamar al servicio de autenticación
     this.authService.login(loginRequest).subscribe({
       next: (response) => {
+        console.log('Respuesta de login:', response);
         if (response.success) {
           this.router.navigate(['/welcome']);
         } else {
@@ -79,7 +84,7 @@ export class LoginComponent implements OnInit {
       error: (err) => {
         this.error = err.error?.message || 'Error en el servidor';
         this.loading = false;
-        console.log("No existe el usuario en la base de datos"+this.error);
+        console.log("Detalles del error de login:"+this.error);
       }
     });
   }

@@ -1,6 +1,6 @@
 <div style="max-width: 800px; margin: 20px auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15); overflow: hidden; font-family: 'Segoe UI', Arial, sans-serif;">
 
-  <!-- Cabecera del formulario con color más vibrante -->
+  <!-- Cabecera del formulario -->
   <div style="background-color: #1e88e5; color: white; padding: 18px 24px; position: relative;">
     <h2 style="margin: 0; font-size: 22px; font-weight: 500;">{{ getModoTexto() }} Curso</h2>
   </div>
@@ -19,70 +19,237 @@
       <span>{{ successMessage }}</span>
     </div>
 
+    <div *ngIf="cursoForm.invalid && cursoForm.dirty" style="background-color: #fff3e0; color: #f57c00; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #f57c00; display: flex; align-items: center;">
+      <span style="margin-right: 10px; font-size: 18px;">⚠️</span>
+      <span>Por favor, complete todos los campos obligatorios correctamente antes de guardar.</span>
+    </div>
+
+    <!-- Tabs de navegación -->
+
+      <div class="tabs">
+        <button
+          class="tab-button"
+          [class.active]="activeTab === 'info'"
+          (click)="setActiveTab('info')">
+          Información General
+        </button>
+        <button
+          class="tab-button"
+          [class.active]="activeTab === 'profesores'"
+          (click)="setActiveTab('profesores')"
+          [disabled]="!cursoID">
+          Profesores
+        </button>
+        <button
+          class="tab-button"
+          [class.active]="activeTab === 'alumnos'"
+          (click)="setActiveTab('alumnos')"
+          [disabled]="!cursoID">
+          Alumnos
+        </button>
+      </div>
+
+
     <!-- Formulario -->
     <form [formGroup]="cursoForm" (ngSubmit)="guardar()">
-      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 20px;">
+      <!-- Tab: Información General -->
+      <div *ngIf="activeTab === 'info'" class="tab-content">
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 20px;">
 
-        <!-- Nombre -->
-        <div style="margin-bottom: 16px;">
-          <label for="nombre" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
-            Nombre <span style="color: #e53935;">*</span>
-          </label>
-          <input
-            type="text"
-            id="nombre"
-            formControlName="nombre"
-            style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box;"
-            [ngStyle]="{'border-color': cursoForm.get('nombre')?.invalid && cursoForm.get('nombre')?.touched ? '#e53935' : '#ddd'}">
-          <div *ngIf="cursoForm.get('nombre')?.invalid && cursoForm.get('nombre')?.touched" style="color: #e53935; font-size: 13px; margin-top: 5px;">
-            El nombre es obligatorio
+          <!-- Nombre -->
+          <div style="margin-bottom: 16px;">
+            <label for="nombre" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+              Nombre <span style="color: #e53935;">*</span>
+            </label>
+            <input
+              type="text"
+              id="nombre"
+              formControlName="nombre"
+              style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box;"
+              [ngStyle]="{'border-color': cursoForm.get('nombre')?.invalid && cursoForm.get('nombre')?.touched ? '#e53935' : '#ddd'}">
+            <div *ngIf="cursoForm.get('nombre')?.invalid && cursoForm.get('nombre')?.touched" style="color: #e53935; font-size: 13px; margin-top: 5px;">
+              El nombre es obligatorio
+            </div>
+          </div>
+
+          <!-- Nivel -->
+          <div style="margin-bottom: 16px;">
+            <label for="nombre" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+              Nivel <span style="color: #e53935;">*</span>
+            </label>
+            <select
+              id="nivel"
+              formControlName="nivel"
+              style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box;">
+              <option value="">Seleccione un nivel</option>
+              <option *ngFor="let nivel of niveles" [value]="nivel">{{ nivel }}</option>
+            </select>
+            <div *ngIf="cursoForm.get('nivel')?.invalid && cursoForm.get('nivel')?.touched" style="color: #e53935; font-size: 13px; margin-top: 5px;">
+              <span *ngIf="cursoForm.get('nivel')?.errors?.['required']">El nivel es obligatorio</span>
+            </div>
+          </div>
+
+          <!-- Precio -->
+          <div style="margin-bottom: 16px;">
+            <label for="precio" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+              Precio <span style="color: #e53935;">*</span>
+            </label>
+            <input
+              type="number"
+              id="precio"
+              formControlName="precio"
+              style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box;"
+              [ngStyle]="{'border-color': cursoForm.get('precio')?.invalid && cursoForm.get('precio')?.touched ? '#e53935' : '#ddd'}">
+            <div *ngIf="cursoForm.get('precio')?.invalid && cursoForm.get('precio')?.touched" style="color: #e53935; font-size: 13px; margin-top: 5px;">
+              <span *ngIf="cursoForm.get('precio')?.errors?.['required']">El precio es obligatorio</span>
+              <span *ngIf="cursoForm.get('precio')?.errors?.['min']">El precio debe ser mayor o igual a cero</span>
+              <span *ngIf="cursoForm.get('precio')?.errors?.['invalidDecimal']">El precio debe ser un número decimal válido (ej: 199.99)</span>
+            </div>
+          </div>
+
+          <!-- Plazas máximas -->
+          <div style="margin-bottom: 16px;">
+            <label for="maxAlumnos" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+              Plazas máximas <span style="color: #e53935;">*</span>
+            </label>
+            <div style="display: flex; align-items: center;">
+              <input
+                type="number"
+                id="maxAlumnos"
+                [disabled]="true"
+                readonly
+                formControlName = "maxAlumnos"
+                style = "width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box;"
+                [value] ="30">
+              <div style="margin-left: 10px; color: #666; font-style: italic; font-size: 13px;">
+                Valor fijo: 30 alumnos máximo
+              </div>
+            </div>
+          </div>
+
+          <!-- Descripción (span 2 columnas) -->
+          <div style="margin-bottom: 16px; grid-column: span 2;">
+            <label for="descripcion" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+              Descripción
+            </label>
+            <textarea
+              id="descripcion"
+              formControlName="descripcion"
+              rows="4"
+              style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box; resize: vertical;"
+              [ngStyle]="{'border-color': cursoForm.get('descripcion')?.invalid && cursoForm.get('descripcion')?.touched ? '#e53935' : '#ddd'}">
+            </textarea>
+            <div *ngIf="cursoForm.get('descripcion')?.invalid && cursoForm.get('descripcion')?.touched" style="color: #e53935; font-size: 13px; margin-top: 5px;">
+              La descripción no puede exceder los 500 caracteres
+            </div>
           </div>
         </div>
+      </div>
 
-        <!-- Nivel -->
-        <div style="margin-bottom: 16px;">
-          <label for="nivel" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
-            Nivel
-          </label>
-          <select
-            id="nivel"
-            formControlName="nivel"
-            style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box;">
-            <option value="">Seleccione un nivel</option>
-            <option *ngFor="let nivel of niveles" [value]="nivel">{{ nivel }}</option>
-          </select>
-        </div>
+      <!-- Tab: Profesores -->
+      <div *ngIf="activeTab === 'profesores'" class="tab-content">
+        <div style="margin-bottom: 20px;">
+          <!-- Información si no hay ID de curso -->
+          <div *ngIf="!cursoID" class="info-box">
+            <p>Para asignar profesores, primero debe guardar el curso.</p>
+          </div>
 
-        <!-- Precio -->
-        <div style="margin-bottom: 16px;">
-          <label for="precio" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
-            Precio
-          </label>
-          <input
-            type="number"
-            id="precio"
-            formControlName="precio"
-            style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box;"
-            [ngStyle]="{'border-color': cursoForm.get('precio')?.invalid && cursoForm.get('precio')?.touched ? '#e53935' : '#ddd'}">
-          <div *ngIf="cursoForm.get('precio')?.invalid && cursoForm.get('precio')?.touched" style="color: #e53935; font-size: 13px; margin-top: 5px;">
-            El precio debe ser mayor o igual a cero
+          <!-- Lista de profesores asignados -->
+          <div *ngIf="cursoID">
+            <div class="tab-header">
+              <h3>Profesores asignados</h3>
+              <button
+                *ngIf="mode !== 'view'"
+                type="button"
+                class="btn btn-primary"
+                (click)="abrirModalAsignarProfesor()"
+                [disabled]="loadingProfesores">
+                <span>Añadir Profesor</span>
+              </button>
+            </div>
+
+            <!-- Loading state -->
+            <div *ngIf="loadingProfesores" class="loading-container-small">
+              <div class="spinner small"></div>
+              <p>Cargando profesores...</p>
+            </div>
+
+            <!-- Empty state -->
+            <div *ngIf="!loadingProfesores && (!profesoresAsignados || profesoresAsignados.length === 0)" class="empty-state-small">
+              <p>No hay profesores asignados a este curso.</p>
+            </div>
+
+            <!-- Profesores list -->
+            <div *ngIf="!loadingProfesores && profesoresAsignados && profesoresAsignados.length > 0" class="items-list">
+              <div *ngFor="let profesor of profesoresAsignados" class="item-card">
+                <div class="item-info" (click)="verProfesor(profesor.id!)" style="cursor: pointer;">
+                  <div class="item-name">{{ profesor.nombre }} {{ profesor.apellido }}</div>
+                  <div class="item-detail">{{ profesor.especialidad || 'Sin especialidad' }}</div>
+                </div>
+                <button
+                  *ngIf="mode !== 'view'"
+                  type="button"
+                  class="btn-remove"
+                  (click)="eliminarProfesor(profesor.id!)"
+                  [disabled]="profesoresAsignados.length <= 1">
+                  🗑️
+                </button>
+              </div>
+            </div>
           </div>
         </div>
+      </div>
 
-        <!-- Descripción (span 2 columnas) -->
-        <div style="margin-bottom: 16px; grid-column: span 2;">
-          <label for="descripcion" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
-            Descripción
-          </label>
-          <textarea
-            id="descripcion"
-            formControlName="descripcion"
-            rows="4"
-            style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box; resize: vertical;"
-            [ngStyle]="{'border-color': cursoForm.get('descripcion')?.invalid && cursoForm.get('descripcion')?.touched ? '#e53935' : '#ddd'}">
-          </textarea>
-          <div *ngIf="cursoForm.get('descripcion')?.invalid && cursoForm.get('descripcion')?.touched" style="color: #e53935; font-size: 13px; margin-top: 5px;">
-            La descripción no puede exceder los 500 caracteres
+      <!-- Tab: Alumnos -->
+      <div *ngIf="activeTab === 'alumnos'" class="tab-content">
+        <div style="margin-bottom: 20px;">
+          <!-- Información si no hay ID de curso -->
+          <div *ngIf="!cursoID" class="info-box">
+            <p>Para matricular alumnos, primero debe guardar el curso.</p>
+          </div>
+
+          <!-- Información de plazas -->
+          <div *ngIf="cursoID" class="plazas-info-box">
+            <div class="plazas-count" [ngClass]="{'no-disponible': !hasPlazasDisponibles()}">
+              <strong>Plazas disponibles:</strong> {{ getPlazasDisponibles() }} / {{ getMaxAlumnos() }}
+            </div>
+          </div>
+
+          <!-- Lista de alumnos matriculados -->
+          <div *ngIf="cursoID">
+            <div class="tab-header">
+              <h3>Alumnos matriculados</h3>
+              <button
+                *ngIf="mode !== 'view'"
+                type="button"
+                class="btn btn-primary"
+                (click)="abrirModalMatricularAlumno()"
+                [disabled]="loadingAlumnos || !hasPlazasDisponibles()">
+                <span>Matricular Alumno</span>
+              </button>
+            </div>
+
+            <!-- Loading state -->
+            <div *ngIf="loadingAlumnos" class="loading-container-small">
+              <div class="spinner small"></div>
+              <p>Cargando alumnos...</p>
+            </div>
+
+            <!-- Empty state -->
+            <div *ngIf="!loadingAlumnos && (!alumnosMatriculados || alumnosMatriculados.length === 0)" class="empty-state-small">
+              <p>No hay alumnos matriculados en este curso.</p>
+            </div>
+
+            <!-- Alumnos list -->
+            <div *ngIf="!loadingAlumnos && alumnosMatriculados && alumnosMatriculados.length > 0" class="items-list">
+              <div *ngFor="let alumno of alumnosMatriculados" class="item-card">
+                <div class="item-info" (click)="verAlumno(alumno.id!)" style="cursor: pointer;">
+                  <div class="item-name">{{ alumno.nombre }} {{ alumno.apellido }}</div>
+                  <div class="item-detail">{{ alumno.email || 'Sin email' }}</div>
+                </div>
+                <button *ngIf="mode !== 'view'" type="button" class="btn-remove" (click)="eliminarAlumno(alumno.id!)">🗑️</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -97,16 +264,353 @@
           Cancelar
         </button>
 
-        <!-- Botón Guardar - solo visible en modos editar o crear -->
+        <!-- Botón Guardar - solo visible en modos editar o crear y en tab de info -->
         <button
-          *ngIf="mode === 'edit' || mode === 'crear'"
+          *ngIf="(mode === 'edit' || mode === 'crear') && activeTab === 'info'"
           type="submit"
-          [disabled]="cursoForm.invalid"
+          [disabled]="cursoForm.invalid || loading"
           style="padding: 10px 20px; background-color: #1e88e5; color: white; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; min-width: 100px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"
           [ngStyle]="{'opacity': cursoForm.invalid ? '0.7' : '1', 'cursor': cursoForm.invalid ? 'not-allowed' : 'pointer'}">
-          Guardar
+          <span *ngIf="!loading">Guardar</span>
+          <span *ngIf="loading">Guardando...</span>
         </button>
       </div>
     </form>
+    <div style="margin-top: 16px; font-size: 13px; color: #666;">
+      <span style="color: #e53935;">*</span> Campos obligatorios
+    </div>
   </div>
 </div>
+
+<!-- Modal para añadir profesor -->
+<div class="modal" *ngIf="showProfesorModal" [class.show]="showProfesorModal">
+  <div class="modal-backdrop" (click)="cerrarModales()"></div>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Añadir profesor al curso</h3>
+        <button type="button" class="close-button" (click)="cerrarModales()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="loadingProfesoresDisponibles" class="modal-loading">
+          <div class="spinner small"></div>
+          <p>Cargando profesores...</p>
+        </div>
+        <div *ngIf="!loadingProfesoresDisponibles">
+          <div *ngIf="profesoresDisponibles.length === 0" class="empty-state">
+            <p>No hay profesores disponibles para añadir a este curso.</p>
+          </div>
+          <div *ngIf="profesoresDisponibles.length > 0">
+            <div class="form-group">
+              <label for="profesorSelect">Seleccione un profesor:</label>
+              <select id="profesorSelect" [(ngModel)]="selectedProfesorId" class="form-control">
+                <option [ngValue]="null">Seleccione un profesor</option>
+                <option *ngFor="let profesor of profesoresDisponibles" [value]="profesor.id">
+                  {{ profesor.nombre }} {{ profesor.apellido }} - {{ profesor.especialidad }}
+                </option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="cerrarModales()">Cancelar</button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          [disabled]="!selectedProfesorId || loadingProfesoresDisponibles || processingAction"
+          (click)="asignarProfesor()">
+          <span *ngIf="!processingAction">Añadir profesor</span>
+          <span *ngIf="processingAction">Procesando...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para añadir alumno -->
+<div class="modal" *ngIf="showAlumnoModal" [class.show]="showAlumnoModal">
+  <div class="modal-backdrop" (click)="cerrarModales()"></div>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Matricular alumno en el curso</h3>
+        <button type="button" class="close-button" (click)="cerrarModales()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="loadingAlumnosDisponibles" class="modal-loading">
+          <div class="spinner small"></div>
+          <p>Cargando alumnos...</p>
+        </div>
+        <div *ngIf="!loadingAlumnosDisponibles">
+          <div *ngIf="alumnosDisponibles.length === 0" class="empty-state">
+            <p>No hay alumnos disponibles para matricular en este curso.</p>
+          </div>
+          <div *ngIf="alumnosDisponibles.length > 0">
+            <div class="form-group">
+              <label for="alumnoSelect">Seleccione un alumno:</label>
+              <select id="alumnoSelect" [(ngModel)]="selectedAlumnoId" class="form-control">
+                <option [ngValue]="null">Seleccione un alumno</option>
+                <option *ngFor="let alumno of alumnosDisponibles" [value]="alumno.id">
+                  {{ alumno.nombre }} {{ alumno.apellido }}
+                </option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="cerrarModales()">Cancelar</button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          [disabled]="!selectedAlumnoId || loadingAlumnosDisponibles || processingAction || !hasPlazasDisponibles()"
+          (click)="matricularAlumno()">
+          <span *ngIf="!processingAction">Matricular alumno</span>
+          <span *ngIf="processingAction">Procesando...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Estilos para tabs */
+  .tabs-container {
+    margin-bottom: 20px;
+  }
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid #dee2e6;
+  }
+  .tab-button {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-weight: 500;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tab-button:hover:not(:disabled) {
+    color: #1e88e5;
+  }
+  .tab-button.active {
+    color: #1e88e5;
+    border-bottom-color: #1e88e5;
+  }
+  .tab-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .tab-content {
+    margin-top: 20px;
+  }
+  .tab-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+  }
+  .tab-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 500;
+  }
+
+  /* Estilos para mensajes informativos */
+  .info-box {
+    background-color: #e3f2fd;
+    color: #1565c0;
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+  }
+  .info-box p {
+    margin: 0;
+  }
+  .plazas-info-box {
+    margin-bottom: 20px;
+  }
+  .plazas-count {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 20px;
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    font-size: 14px;
+  }
+  .plazas-count.no-disponible {
+    background-color: #ffebee;
+    color: #d32f2f;
+  }
+
+  /* Estilos para listas de items */
+  .items-list {
+    display: grid;
+    gap: 10px;
+  }
+  .item-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background-color: #f5f5f5;
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+  .item-card:hover {
+    background-color: #eeeeee;
+  }
+  .item-info {
+    flex: 1;
+  }
+  .item-name {
+    font-weight: 500;
+    color: #333;
+  }
+  .item-detail {
+    font-size: 14px;
+    color: #666;
+    margin-top: 4px;
+  }
+  .btn-remove {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 4px;
+  }
+  .btn-remove:hover:not(:disabled) {
+    background-color: #ffebee;
+  }
+  .btn-remove:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Estados de loading y empty */
+  .loading-container-small {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+  }
+  .spinner.small {
+    width: 24px;
+    height: 24px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #1e88e5;
+    border-radius: 50%;
+    animation: spin 2s linear infinite;
+    margin: 0 auto 10px;
+  }
+  .empty-state-small {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+    background-color: #f5f5f5;
+    border-radius: 6px;
+  }
+
+  /* Estilos para los modales */
+  .modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1050;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    outline: 0;
+  }
+  .modal.show {
+    display: block;
+  }
+  .modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1040;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+  .modal-dialog {
+    position: relative;
+    width: auto;
+    margin: 1.75rem auto;
+    max-width: 500px;
+    z-index: 1050;
+  }
+  .modal-content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background-color: #fff;
+    border-radius: 0.3rem;
+    outline: 0;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+  }
+  .modal-body {
+    position: relative;
+    flex: 1 1 auto;
+    padding: 1rem;
+    min-height: 150px;
+  }
+  .modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 1rem;
+    border-top: 1px solid #dee2e6;
+    gap: 0.5rem;
+  }
+  .close-button {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #000;
+    opacity: 0.5;
+    cursor: pointer;
+  }
+  .close-button:hover {
+    opacity: 1;
+  }
+  .modal-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 150px;
+  }
+
+  /* Animación para spinner */
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  /* Añade un asterisco rojo para campos obligatorios */
+  .required-field::after {
+    content: " *";
+    color: #e53935;
+  }
+
+  /* Estilo para campos inválidos */
+  .form-control.ng-invalid.ng-touched {
+    border-color: #e53935;
+    box-shadow: 0 0 0 0.2rem rgba(229, 57, 53, 0.25);
+  }
+
+</style>

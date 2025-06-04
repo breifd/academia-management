@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { ListaCursoComponent } from './lista-curso.component';
+import { SessionExpiredComponent } from './session-expired.component';
 
-describe('ListaCursoComponent', () => {
-  let component: ListaCursoComponent;
-  let fixture: ComponentFixture<ListaCursoComponent>;
+describe('SessionExpiredComponent', () => {
+  let component: SessionExpiredComponent;
+  let fixture: ComponentFixture<SessionExpiredComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ListaCursoComponent]
+      imports: [SessionExpiredComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(ListaCursoComponent);
+    fixture = TestBed.createComponent(SessionExpiredComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

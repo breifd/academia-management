@@ -1,16 +1,15 @@
-import { ProfesorEntity } from './../../../interfaces/profesor-entity';
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ProfesorService } from '../../../services/profesor.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { Usuario } from '../../../interfaces/usuario';
-import { AuthService } from '../../../services/auth.service';
+
 import { UsuarioService } from '../../../services/usuario.service';
-import { RolUsuario } from '../../../enum/rol-usuario';
-import { UsuarioDTO } from '../../../interfaces/usuarioDTO';
+
 import { debounceTime, distinctUntilChanged, switchMap, takeUntil } from 'rxjs/operators';
 import { Subject, of } from 'rxjs';
+import { RolUsuario, UsuarioCreateDTO, UsuarioResponseDTO } from '../../../interfaces/usuario';
+import { ProfesorCreateDTO, ProfesorResponseDTO } from '../../../interfaces/profesor-entity';
 
 export type FormMode = 'view' | 'edit' | 'crear';
 
@@ -25,8 +24,7 @@ export class FormProfesoresComponent implements OnInit, OnDestroy {
 
   profesorForm: FormGroup;
   usuarioForm: FormGroup;
-  crearUsuario: boolean = true; // Siempre true, obligatorio
-  usuarioExistente: Usuario | null = null;
+  usuarioExistente: UsuarioResponseDTO | null = null;
   mode: FormMode = "crear";
   profesorID: number | null = null;
   loading = false;
@@ -36,7 +34,6 @@ export class FormProfesoresComponent implements OnInit, OnDestroy {
   usernameExists: boolean = false;
   verificandoUsername: boolean = false;
 
-  // Para manejar subscriptions
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -44,7 +41,6 @@ export class FormProfesoresComponent implements OnInit, OnDestroy {
     private pService: ProfesorService,
     private route: ActivatedRoute,
     private router: Router,
-    private authService: AuthService,
     private usuarioService: UsuarioService,
   ) {
     this.profesorForm = this.createForm();
@@ -68,37 +64,25 @@ export class FormProfesoresComponent implements OnInit, OnDestroy {
     return password === confirmarPassword ? null : { passwordMismatch: true };
   }
 
-  toggleCrearUsuario(): void {
-    this.crearUsuario = true; // Siempre true
-    if (this.crearUsuario) {
-      this.usuarioForm.reset();
-      this.usuarioForm.patchValue({ usarMismoNombre: true });
-      this.usernameValidated = false;
-    }
-  }
-
-  // 🚀 NUEVA FUNCIONALIDAD: Validación automática
   private setupUsernameValidation(): void {
     const usernameControl = this.usuarioForm.get('username');
     if (usernameControl) {
       usernameControl.valueChanges.pipe(
-        debounceTime(500), // Esperar 500ms después de que el usuario deje de escribir
-        distinctUntilChanged(), // Solo si el valor cambió realmente
+        debounceTime(500),
+        distinctUntilChanged(),
         switchMap(username => {
-          // Reset del estado anterior
           this.usernameValidated = false;
           this.usernameExists = false;
 
-          // Si el username es válido (mínimo 4 caracteres)
           if (username && username.length >= 4) {
             this.verificandoUsername = true;
             return this.usuarioService.checkUsernameExists(username);
           } else {
             this.verificandoUsername = false;
-            return of(null); // No hacer petición si es muy corto
+            return of(null);
           }
         }),
-        takeUntil(this.destroy$) // Cancelar al destruir el componente
+        takeUntil(this.destroy$)
       ).subscribe({
         next: (exists) => {
           if (exists !== null) {
@@ -106,12 +90,10 @@ export class FormProfesoresComponent implements OnInit, OnDestroy {
             this.usernameValidated = true;
             this.verificandoUsername = false;
 
-            // Actualizar errores del formulario
             const usernameControl = this.usuarioForm.get('username');
             if (exists && usernameControl) {
               usernameControl.setErrors({ 'usernameTaken': true });
             } else if (usernameControl?.errors?.['usernameTaken']) {
-              // Limpiar solo el error de username tomado, mantener otros errores
               const errors = { ...usernameControl.errors };
               delete errors['usernameTaken'];
               const hasErrors = Object.keys(errors).length > 0;
@@ -127,7 +109,6 @@ export class FormProfesoresComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Mantener el método manual por si alguien quiere usarlo
   verificarUsername(): void {
     const username = this.usuarioForm.get('username')?.value;
     if (!username || username.length < 4) {
@@ -162,47 +143,37 @@ export class FormProfesoresComponent implements OnInit, OnDestroy {
 
       this.route.queryParams.subscribe(queryParams => {
         this.mode = queryParams['modo'] as FormMode;
+
         if (this.mode === 'edit' || this.mode === 'view') {
           this.profesorID = +id;
           if (this.profesorID) {
             this.cargarProfesor(this.profesorID);
-            // Si el modo es 'edit', verificar si el profesor tiene un usuario asociado
+
             this.usuarioService.getUsuarioByProfesorId(this.profesorID).subscribe({
               next: (usuario) => {
                 console.log('✅ Usuario encontrado:', usuario);
                 this.usuarioExistente = usuario;
-                this.crearUsuario = false; // Solo en edit, si ya existe usuario
               },
               error: (err) => {
                 if (err.status === 404) {
-                  console.log('ℹ️ Profesor sin usuario asociado (normal)');
+                  console.log('ℹ️ Profesor sin usuario asociado');
                   this.usuarioExistente = null;
-                  if (this.mode === 'edit') {
-                    this.crearUsuario = true; // OBLIGAR crear usuario
-                    console.log('⚠️ Modo edit sin usuario: creación obligatoria activada');
-                  } else {
-                    this.crearUsuario = false; // En view no mostrar usuario
-                  }
                 } else {
-                  console.error('❌ Error real al buscar usuario:', err);
+                  console.error('❌ Error al buscar usuario:', err);
                   this.error = 'Error al verificar usuario asociado';
                 }
               }
             });
           }
-        } else if (this.mode === 'crear') {
-          this.crearUsuario = true; // Siempre obligatorio crear usuario
         }
         this.tipoForm();
       });
     });
 
-    // 🚀 SETUP: Configurar validación automática
     this.setupUsernameValidation();
   }
 
   ngOnDestroy(): void {
-    // Limpiar subscriptions para evitar memory leaks
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -236,21 +207,18 @@ export class FormProfesoresComponent implements OnInit, OnDestroy {
   }
 
   validarFormularioCompleto(): boolean {
-    // Validar el formulario de profesor
     if (this.profesorForm.invalid) {
       this.profesorForm.markAllAsTouched();
       return false;
     }
 
-    // Siempre validar usuario (quité el if(this.crearUsuario))
-    if (this.mode === 'crear' || (this.mode === 'edit' && this.crearUsuario && !this.usuarioExistente)) {
+    // CAMBIO: Siempre validar usuario en crear, solo en edit si no existe usuario
+    if (this.mode === 'crear' || (this.mode === 'edit' && !this.usuarioExistente)) {
       if (this.usuarioForm.invalid) {
         this.usuarioForm.markAllAsTouched();
         return false;
       }
 
-      // 🚀 CAMBIO: Ya no es necesario verificar manualmente
-      // La validación se hace automáticamente
       if (this.usernameExists) {
         this.error = 'El nombre de usuario ya existe. Por favor, elija otro.';
         return false;
@@ -265,7 +233,6 @@ export class FormProfesoresComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Siempre validar todo (incluído usuario)
     if (!this.validarFormularioCompleto()) {
       return;
     }
@@ -274,35 +241,38 @@ export class FormProfesoresComponent implements OnInit, OnDestroy {
     this.error = null;
     this.successMessage = null;
 
-    const profesorData: ProfesorEntity = {
+    const profesorData: ProfesorCreateDTO = {
       ...this.profesorForm.value
     };
 
-    // Siempre crear con usuario
     if (this.mode === 'crear') {
-      const usuarioData: Usuario = {
+      // OBLIGATORIO: Siempre crear con usuario
+      const usuarioData: UsuarioCreateDTO = {
         username: this.usuarioForm.get('username')?.value,
         password: this.usuarioForm.get('password')?.value,
         nombre: this.usuarioForm.get('usarMismoNombre')?.value ? profesorData.nombre : '',
         apellido: this.usuarioForm.get('usarMismoNombre')?.value ? profesorData.apellido : '',
         rol: RolUsuario.PROFESOR
       };
-      this.pService.createProfesorWithUser(profesorData, usuarioData).subscribe({
+
+      profesorData.usuario = usuarioData;
+
+      this.pService.createProfesor(profesorData).subscribe({
         next: () => {
-          this.successMessage = 'Profesor creado correctamente';
+          this.successMessage = 'Profesor y usuario creados correctamente';
           this.loading = false;
           setTimeout(() => this.router.navigate(['/profesores']), 2000);
         },
         error: (err) => {
-          this.error = 'Error al crear el profesor. Inténtelo de nuevo más tarde.';
+          this.error = err.error?.error || 'Error al crear el profesor. Inténtelo de nuevo más tarde.';
           this.loading = false;
           console.error('Error al crear el profesor:', err);
         }
       });
     } else if (this.mode === 'edit' && this.profesorID) {
       if (this.usuarioExistente) {
-        console.log('⚠️ Modo edit con usuario existente:', this.usuarioExistente);
-        const syncUsuario = this.usuarioExistente && this.usuarioForm.get('usarMismoNombre')?.value;
+        // Profesor con usuario existente - solo actualizar y sincronizar si se solicita
+        const syncUsuario = this.usuarioForm.get('usarMismoNombre')?.value || false;
 
         this.pService.updateProfesorWithSync(this.profesorID, profesorData, syncUsuario).subscribe({
           next: () => {
@@ -311,49 +281,43 @@ export class FormProfesoresComponent implements OnInit, OnDestroy {
             setTimeout(() => this.router.navigate(['/profesores']), 2000);
           },
           error: (err) => {
-            this.error = 'Error al actualizar el profesor. Inténtelo de nuevo más tarde.';
+            this.error = err.error?.error || 'Error al actualizar el profesor. Inténtelo de nuevo más tarde.';
             this.loading = false;
             console.error('Error al actualizar el profesor:', err);
           }
         });
-      } else if (this.crearUsuario) {
-        // CASO 2: Profesor sin usuario - crear usuario también
-        console.log('🔄 Actualizar profesor Y crear usuario nuevo');
-        if (!this.profesorID) {
-          this.error = 'Error: ID del profesor no válido';
-          this.loading = false;
-          return;
-        }
+      } else {
+        // Profesor sin usuario - OBLIGATORIO crear usuario también
+        console.log('🚨 OBLIGATORIO: Creando usuario para profesor existente');
 
+        // Primero actualizar el profesor
         this.pService.updateProfesor(this.profesorID, profesorData).subscribe({
           next: () => {
-            // Luego crear el usuario
-            const usuarioDTO: UsuarioDTO = {
+            // Luego crear el usuario obligatoriamente
+            const usuarioDTO: UsuarioCreateDTO = {
               username: this.usuarioForm.get('username')?.value || '',
               password: this.usuarioForm.get('password')?.value || '',
-              nombre: this.usuarioForm.get('usarMismoNombre')?.value ? profesorData.nombre : (this.usuarioForm.get('nombre')?.value || ''),
-              apellido: this.usuarioForm.get('usarMismoNombre')?.value ? profesorData.apellido : (this.usuarioForm.get('apellido')?.value || ''),
+              nombre: this.usuarioForm.get('usarMismoNombre')?.value ? profesorData.nombre : '',
+              apellido: this.usuarioForm.get('usarMismoNombre')?.value ? profesorData.apellido : '',
               rol: RolUsuario.PROFESOR,
               profesorId: this.profesorID!
             };
 
-            console.log('👤 Creando usuario con DTO:', usuarioDTO);
-
             this.usuarioService.createUsuario(usuarioDTO).subscribe({
               next: () => {
-                this.successMessage = 'Profesor y usuario creados correctamente';
+                this.successMessage = 'Profesor actualizado y usuario creado correctamente';
                 this.loading = false;
                 setTimeout(() => this.router.navigate(['/profesores']), 2000);
               },
               error: (err) => {
-                this.error = 'Profesor actualizado pero error al crear usuario';
+                this.error = 'Profesor actualizado pero error al crear usuario: ' + (err.error?.error || err.message);
                 this.loading = false;
                 console.error('Error al crear usuario:', err);
               }
             });
           },
           error: (err) => {
-            this.error = 'Error al actualizar el profesor';
+            this.error = err.error?.error || 'Error al actualizar el profesor';
             this.loading = false;
             console.error('Error:', err);
           }
@@ -368,8 +332,15 @@ export class FormProfesoresComponent implements OnInit, OnDestroy {
       this.usuarioForm.disable();
     } else {
       this.profesorForm.enable();
-      if (this.crearUsuario || this.mode === 'crear') {
+      // CAMBIO: Siempre habilitar usuario form en crear, y en edit si no existe usuario
+      if (this.mode === 'crear' || !this.usuarioExistente) {
         this.usuarioForm.enable();
+      } else {
+        // En edit con usuario existente, solo habilitar la opción de sincronización
+        this.usuarioForm.get('usarMismoNombre')?.enable();
+        this.usuarioForm.get('username')?.disable();
+        this.usuarioForm.get('password')?.disable();
+        this.usuarioForm.get('confirmarPassword')?.disable();
       }
     }
   }
@@ -380,5 +351,15 @@ export class FormProfesoresComponent implements OnInit, OnDestroy {
 
   getMode(): string {
     return this.mode === 'view' ? 'Ver' : this.mode === 'edit' ? 'Editar' : 'Crear';
+  }
+
+  // HELPER: Determinar si debe mostrar campos de usuario
+  shouldShowUsuarioFields(): boolean {
+    return this.mode === 'crear' || (this.mode === 'edit' && !this.usuarioExistente);
+  }
+
+  // HELPER: Determinar si debe mostrar solo sincronización
+  shouldShowSyncOnly(): boolean {
+    return this.mode === 'edit' && this.usuarioExistente !== null;
   }
 }

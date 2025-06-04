@@ -2,37 +2,37 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs/internal/Observable';
 import { Page } from '../interfaces/page';
-import { TareaEntity } from '../interfaces/tarea-entity';
+import { TareaDTO, TareaResponseDTO, TareaSimpleDTO } from '../interfaces/tarea-entity';
+
 
 @Injectable({
   providedIn: 'root'
 })
 export class TareaService {
   private apiUrl = 'http://localhost:8080/api/tareas';
-  constructor( private http :  HttpClient) { }
 
-  getTareas(page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<TareaEntity>> {
+  constructor(private http: HttpClient) { }
+
+  // Métodos básicos CRUD
+  getTareas(page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<TareaResponseDTO>> {
     let params = new HttpParams()
       .set('page', page.toString())
       .set('size', size.toString())
       .set('sort', sort)
       .set('direction', direction);
 
-    return this.http.get<Page<TareaEntity>>(this.apiUrl, { params });
+    return this.http.get<Page<TareaResponseDTO>>(this.apiUrl, { params });
   }
 
-  // Obtener una tarea por ID
-  getTareaById(id: number): Observable<TareaEntity> {
-    return this.http.get<TareaEntity>(`${this.apiUrl}/${id}`);
+  getTareaById(id: number): Observable<TareaResponseDTO> {
+    return this.http.get<TareaResponseDTO>(`${this.apiUrl}/${id}`);
   }
 
-  // Obtener todas las tareas (lista completa sin paginación)
-  getTareasLista(): Observable<TareaEntity[]> {
-    return this.http.get<TareaEntity[]>(`${this.apiUrl}/listar`);
+  getTareasLista(): Observable<TareaSimpleDTO[]> {
+    return this.http.get<TareaSimpleDTO[]>(`${this.apiUrl}/listar`);
   }
 
-  // Buscar tareas por nombre
-  searchTareas(nombre: string = '', page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<TareaEntity>> {
+  searchTareas(nombre: string = '', page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<TareaResponseDTO>> {
     let params = new HttpParams()
       .set('nombre', nombre)
       .set('page', page.toString())
@@ -40,47 +40,50 @@ export class TareaService {
       .set('sort', sort)
       .set('direction', direction);
 
-    return this.http.get<Page<TareaEntity>>(`${this.apiUrl}/buscar`, { params });
+    return this.http.get<Page<TareaResponseDTO>>(`${this.apiUrl}/buscar`, { params });
   }
 
-  // Obtener tareas pendientes (fecha límite posterior a hoy)
-  getTareasPendientes(page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<TareaEntity>> {
+  getTareasPendientes(page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<TareaResponseDTO>> {
     let params = new HttpParams()
       .set('page', page.toString())
       .set('size', size.toString())
       .set('sort', sort)
       .set('direction', direction);
 
-    return this.http.get<Page<TareaEntity>>(`${this.apiUrl}/pendientes`, { params });
+    return this.http.get<Page<TareaResponseDTO>>(`${this.apiUrl}/pendientes`, { params });
   }
 
-  // Obtener tareas vencidas (fecha límite anterior a hoy)
-  getTareasVencidas(page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<TareaEntity>> {
+  getTareasVencidas(page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<TareaResponseDTO>> {
     let params = new HttpParams()
       .set('page', page.toString())
       .set('size', size.toString())
       .set('sort', sort)
       .set('direction', direction);
 
-    return this.http.get<Page<TareaEntity>>(`${this.apiUrl}/vencidas`, { params });
+    return this.http.get<Page<TareaResponseDTO>>(`${this.apiUrl}/vencidas`, { params });
   }
 
-  // Crear una nueva tarea
-  createTarea(tarea: TareaEntity): Observable<TareaEntity> {
-    return this.http.post<TareaEntity>(this.apiUrl, tarea);
+  // Crear tarea con DTO
+  createTarea(tarea: TareaDTO): Observable<TareaResponseDTO> {
+    return this.http.post<TareaResponseDTO>(this.apiUrl, tarea);
   }
 
-  // Actualizar una tarea existente
-  updateTarea(id: number, tarea: TareaEntity): Observable<TareaEntity> {
-    return this.http.put<TareaEntity>(`${this.apiUrl}/${id}`, tarea);
+  // Actualizar tarea con DTO
+  updateTarea(id: number, tarea: TareaDTO): Observable<TareaResponseDTO> {
+    return this.http.put<TareaResponseDTO>(`${this.apiUrl}/${id}`, tarea);
   }
 
   // Subir documento a una tarea
-  uploadDocumento(id: number, file: File): Observable<TareaEntity> {
+  uploadDocumento(id: number, file: File): Observable<TareaResponseDTO> {
     const formData = new FormData();
     formData.append('file', file);
 
-    return this.http.post<TareaEntity>(`${this.apiUrl}/${id}/documento`, formData);
+    return this.http.post<TareaResponseDTO>(`${this.apiUrl}/${id}/documento`, formData);
+  }
+
+  // NUEVO: Crear tarea con documento en una operación
+  createTareaConDocumento(formData: FormData): Observable<TareaResponseDTO> {
+    return this.http.post<TareaResponseDTO>(`${this.apiUrl}/crear-con-documento`, formData);
   }
 
   // Descargar documento de una tarea
@@ -94,12 +97,55 @@ export class TareaService {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 
-  tieneDocumento(tarea: TareaEntity): boolean {
-    return tarea.nombreDocumento !== undefined && tarea.nombreDocumento !== null && tarea.nombreDocumento !== '';
+  // Métodos específicos por rol
+
+  // Obtener tareas de un profesor
+  getTareasByProfesor(profesorId: number, page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<TareaResponseDTO>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString())
+      .set('sort', sort)
+      .set('direction', direction);
+
+    return this.http.get<Page<TareaResponseDTO>>(`${this.apiUrl}/profesor/${profesorId}`, { params });
   }
 
-  // Formatear nota para mostrar
-  formatNota(tarea: TareaEntity): string {
+  // Obtener tareas de un curso
+  getTareasByCurso(cursoId: number, page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<TareaResponseDTO>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString())
+      .set('sort', sort)
+      .set('direction', direction);
+
+    return this.http.get<Page<TareaResponseDTO>>(`${this.apiUrl}/curso/${cursoId}`, { params });
+  }
+
+  // Obtener tareas asignadas a un alumno
+  getTareasByAlumno(alumnoId: number, page: number = 0, size: number = 10, sort: string = 'id', direction: string = 'asc'): Observable<Page<TareaResponseDTO>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString())
+      .set('sort', sort)
+      .set('direction', direction);
+
+    return this.http.get<Page<TareaResponseDTO>>(`${this.apiUrl}/alumno/${alumnoId}`, { params });
+  }
+
+  // Obtener tareas de un curso para un alumno específico
+  getTareasByCursoForAlumno(cursoId: number, alumnoId: number): Observable<TareaResponseDTO[]> {
+    return this.http.get<TareaResponseDTO[]>(`${this.apiUrl}/curso/${cursoId}/alumno/${alumnoId}`);
+  }
+
+  // Métodos de utilidad
+  tieneDocumento(tarea: TareaResponseDTO): boolean {
+     return tarea.tieneDocumento === true ||
+         (tarea.nombreDocumento !== undefined &&
+          tarea.nombreDocumento !== null &&
+          tarea.nombreDocumento !== '');
+  }
+
+  formatNota(tarea: TareaResponseDTO): string {
     const tieneDocumento = this.tieneDocumento(tarea);
 
     // Si no hay documento cargado y la fecha límite ya pasó
@@ -107,12 +153,34 @@ export class TareaService {
       return 'No presentado';
     }
 
-    // Si hay nota, mostrarla formateada a 1 decimal
-    if (tarea.nota !== null && tarea.nota !== undefined) {
-      return tarea.nota.toFixed(1);
-    }
-
     return 'Pendiente';
   }
-}
 
+  // Verificar si una tarea está vencida
+  isTareaVencida(tarea: TareaResponseDTO): boolean {
+    if (!tarea.fechaLimite) {
+      return false;
+    }
+    try {
+      const fechaLimite = new Date(tarea.fechaLimite);
+      const ahora = new Date();
+      return fechaLimite < ahora;
+    } catch (error) {
+      console.error('Error al procesar la fecha:', error);
+      return false;
+    }
+  }
+
+  // Obtener el estado de una tarea para un alumno
+  getEstadoTarea(tarea: TareaResponseDTO): string {
+    if (this.isTareaVencida(tarea)) {
+      return 'Vencida';
+    }
+
+    if (tarea.fechaPublicacion && new Date(tarea.fechaPublicacion) > new Date()) {
+      return 'Programada';
+    }
+
+    return 'Activa';
+  }
+}

@@ -16,6 +16,10 @@ export const routes: Routes = [
         path: 'welcome',
         loadComponent: () => import('./academia/welcome/welcome/welcome.component').then(m => m.WelcomeComponent)
       },
+       {
+        path: 'perfil',
+        loadComponent: () => import('./academia/mi-perfil/mi-perfil.component').then(m => m.MiPerfilComponent)
+      },
       {
         path: 'profesores',
         loadComponent: () => import('./academia/profesores/lista-profesores/lista-profesores.component').then(m => m.ProfesoresComponent)
@@ -63,6 +67,35 @@ export const routes: Routes = [
       {
         path: 'tareas/nuevo',
         loadComponent: () => import('./academia/tareas/form-tareas/form-tareas.component').then(m => m.FormTareasComponent)
+      },
+      {
+        path: 'tareas/:tareaId/entregas',
+        loadComponent: () => import('./academia/entregas/lista-entregas/lista-entregas.component').then(m => m.ListaEntregasComponent)
+      },
+      {
+        path: 'tareas/:tareaId/entrega',
+        loadComponent: () => import('./academia/entregas/form-entrega/form-entrega.component').then(m => m.FormEntregaComponent)
+      },
+      // Ver/editar entrega específica por ID
+      {
+        path: 'entregas/:id',
+        loadComponent: () => import('./academia/entregas/form-entrega/form-entrega.component').then(m => m.FormEntregaComponent)
+      },
+      // Lista general de entregas (con filtros)
+      {
+        path: 'entregas',
+        loadComponent: () => import('./academia/entregas/lista-entregas/lista-entregas.component').then(m => m.ListaEntregasComponent)
+      },
+      // === RUTAS ADICIONALES ===
+      // Dashboard de profesor (tareas y entregas pendientes)
+      {
+        path: 'profesor/dashboard',
+        loadComponent: () => import('./academia/dashboard/profesor-dashboard/profesor-dashboard.component').then(m => m.ProfesorDashboardComponent)
+      },
+      // Dashboard de alumno (tareas asignadas y entregas)
+      {
+        path: 'alumno/dashboard',
+        loadComponent: () => import('./academia/dashboard/alumno-dashboard/alumno-dashboard.component').then(m => m.AlumnoDashboardComponent)
       },
       { path: '', redirectTo: 'welcome', pathMatch: 'full' }
     ]

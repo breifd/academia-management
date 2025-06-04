@@ -10,6 +10,9 @@
   <!-- Cabecera del formulario -->
   <div style="background-color: #1e88e5; color: white; padding: 18px 24px; position: relative;">
     <h2 style="margin: 0; font-size: 22px; font-weight: 500;">{{ getMode() }} Alumno</h2>
+    <p *ngIf="mode === 'crear'" style="margin: 8px 0 0 0; font-size: 14px; opacity: 0.9;">
+      Se creará automáticamente un usuario asociado
+    </p>
   </div>
 
   <!-- Cuerpo del formulario -->
@@ -26,9 +29,7 @@
       <span>{{ successMessage }}</span>
     </div>
 
-    <!-- 🚀 ACTUALIZADO: Estados automáticos de validación -->
-
-    <!-- Validando username (mientras escribe) -->
+    <!-- Estados de validación de username -->
     <div style="margin-bottom: 16px; margin-top: 8px;" *ngIf="verificandoUsername">
       <div style="background-color: #fff3e0; color: #f57c00; padding: 8px 12px; border-radius: 4px; display: flex; align-items: center; font-size: 14px;">
         <span style="margin-right: 6px;">⏳</span>
@@ -36,7 +37,6 @@
       </div>
     </div>
 
-    <!-- Username disponible -->
     <div style="margin-bottom: 16px; margin-top: 8px;" *ngIf="usernameValidated && !usernameExists && !verificandoUsername">
       <div style="background-color: #e8f5e9; color: #2e7d32; padding: 8px 12px; border-radius: 4px; display: flex; align-items: center; font-size: 14px;">
         <span style="margin-right: 6px;">✅</span>
@@ -44,7 +44,6 @@
       </div>
     </div>
 
-    <!-- Username no disponible -->
     <div style="margin-bottom: 16px; margin-top: 8px;" *ngIf="usernameValidated && usernameExists && !verificandoUsername">
       <div style="background-color: #ffebee; color: #d32f2f; padding: 8px 12px; border-radius: 4px; display: flex; align-items: center; font-size: 14px;">
         <span style="margin-right: 6px;">❌</span>
@@ -143,65 +142,46 @@
         </div>
       </div>
 
-      <!-- Sección de Usuario -->
+      <!-- Sección de Usuario - OBLIGATORIA -->
       <div *ngIf="mode !== 'view'" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #eee;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <h3 style="margin: 0; font-size: 18px; font-weight: 500;">Datos de Usuario</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h3 style="margin: 0; font-size: 18px; font-weight: 500;">
+            Datos de Usuario
+            <span style="color: #e53935; font-size: 16px;">*</span>
+          </h3>
 
-          <!-- Información en lugar de toggle en modo crear -->
-          <div *ngIf="!usuarioExistente && mode === 'crear'" style="background-color: #e3f2fd; color: #1976d2; padding: 8px 16px; border-radius: 6px; margin-left: 10px; font-size: 14px;">
-            <span>⚠️ Se creará automáticamente un usuario para el alumno</span>
-          </div>
-
-          <!-- Toggle en edit sin usuario -->
-          <div *ngIf="!usuarioExistente && mode === 'edit'">
-            <button
-              type="button"
-              (click)="toggleCrearUsuario()"
-              style="padding: 8px 16px; background-color: #f5f5f5; color: #333; border: none; border-radius: 6px; font-weight: 500; cursor: pointer;">
-              {{ crearUsuario ? 'No crear usuario' : 'Crear usuario' }}
-            </button>
-          </div>
-
+          <!-- Estado del usuario -->
           <div *ngIf="usuarioExistente" style="background-color: #e8f5e9; color: #2e7d32; padding: 8px 16px; border-radius: 6px;">
-            <span>Usuario asociado: {{ usuarioExistente.username }}</span>
+            <span>Usuario asociado: <strong>{{ usuarioExistente.username }}</strong></span>
+          </div>
+
+          <div *ngIf="!usuarioExistente && mode === 'edit'" style="background-color: #fff3e0; color: #f57c00; padding: 8px 16px; border-radius: 6px;">
+            <span>⚠️ Debe crear un usuario para el alumno</span>
           </div>
         </div>
 
-        <!-- Formulario de usuario - Siempre visible en crear -->
-        <div *ngIf="(crearUsuario && !usuarioExistente) || mode === 'crear'" style="margin-top: 16px;">
+        <!-- Formulario de usuario completo - Para crear y edit sin usuario -->
+        <div *ngIf="shouldShowUsuarioFields()" style="margin-top: 16px;">
           <div [formGroup]="usuarioForm">
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
               <!-- Nombre de usuario -->
               <div style="margin-bottom: 16px;">
                 <label for="username" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
                   Nombre de usuario <span style="color: #e53935;">*</span>
-                  <span style="color: #666; font-weight: normal; font-size: 13px;">(Se valida automáticamente)</span>
+                  <span style="color: #666; font-weight: normal; font-size: 13px;">(Validación automática)</span>
                 </label>
                 <input
                   type="text"
                   id="username"
                   formControlName="username"
-                  placeholder="Escribe tu nombre de usuario..."
+                  placeholder="Escribe el nombre de usuario..."
                   style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box;"
                   [ngStyle]="{'border-color': usuarioForm.get('username')?.invalid && usuarioForm.get('username')?.touched ? '#e53935' : (usernameValidated && !usernameExists ? '#4caf50' : '#ddd')}">
                 <div *ngIf="usuarioForm.get('username')?.invalid && usuarioForm.get('username')?.touched" style="color: #e53935; font-size: 13px; margin-top: 5px;">
                   <span *ngIf="usuarioForm.get('username')?.errors?.['required']">El nombre de usuario es obligatorio</span>
-                  <span *ngIf="usuarioForm.get('username')?.errors?.['minlength']">El nombre de usuario debe tener al menos 4 caracteres</span>
-                  <span *ngIf="usuarioForm.get('username')?.errors?.['maxlength']">El nombre de usuario no puede tener más de 50 caracteres</span>
+                  <span *ngIf="usuarioForm.get('username')?.errors?.['minlength']">Debe tener al menos 4 caracteres</span>
+                  <span *ngIf="usuarioForm.get('username')?.errors?.['maxlength']">No puede tener más de 50 caracteres</span>
                   <span *ngIf="usuarioForm.get('username')?.errors?.['usernameTaken']">Este nombre de usuario ya existe</span>
-                </div>
-
-                <!-- 🚀 OPCIONAL: Mantener botón manual por si se necesita -->
-                <div style="margin-top: 10px;" *ngIf="usuarioForm.get('username')?.value && usuarioForm.get('username')?.value.length >= 4">
-                  <button
-                    type="button"
-                    (click)="verificarUsername()"
-                    [disabled]="verificandoUsername"
-                    style="padding: 6px 12px; background-color: #f5f5f5; color: #333; border: none; border-radius: 4px; font-weight: 500; cursor: pointer; font-size: 13px;">
-                    <span *ngIf="!verificandoUsername">Verificar manualmente</span>
-                    <span *ngIf="verificandoUsername">Verificando...</span>
-                  </button>
                 </div>
               </div>
 
@@ -217,7 +197,7 @@
                   style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; box-sizing: border-box;"
                   [ngStyle]="{'border-color': usuarioForm.get('password')?.invalid && usuarioForm.get('password')?.touched ? '#e53935' : '#ddd'}">
                 <div *ngIf="usuarioForm.get('password')?.invalid && usuarioForm.get('password')?.touched" style="color: #e53935; font-size: 13px; margin-top: 5px;">
-                  La contraseña es obligatoria y debe tener al menos 6 caracteres
+                  La contraseña es obligatoria (mínimo 6 caracteres)
                 </div>
               </div>
 
@@ -252,8 +232,8 @@
           </div>
         </div>
 
-        <!-- Opción de sincronización para usuarios existentes -->
-        <div *ngIf="usuarioExistente && mode === 'edit'" style="margin-top: 16px;">
+        <!-- Solo sincronización para usuarios existentes -->
+        <div *ngIf="shouldShowSyncOnly()" style="margin-top: 16px;">
           <div [formGroup]="usuarioForm">
             <div style="margin-bottom: 16px; display: flex; align-items: center;">
               <input
@@ -279,17 +259,25 @@
           Cancelar
         </button>
 
-        <!-- Botón Guardar - solo visible en modos editar o crear -->
+        <!-- Botón Guardar -->
         <button
           *ngIf="mode === 'edit' || mode === 'crear'"
           type="button"
           (click)="guardar()"
           [disabled]="loading"
           style="padding: 10px 20px; background-color: #1e88e5; color: white; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; min-width: 100px;">
-          <span *ngIf="!loading">Guardar</span>
+          <span *ngIf="!loading">{{ mode === 'crear' ? 'Crear Alumno y Usuario' : 'Guardar' }}</span>
           <span *ngIf="loading">Guardando...</span>
         </button>
       </div>
     </form>
   </div>
 </div>
+
+<!-- Estilos para el spinner -->
+<style>
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+</style>
