@@ -75,14 +75,35 @@ export class UsuarioService {
   );;
   }
 
-  // Añadir al final de la clase UsuarioService
-  cambiarPasswordSimple(username: string, passwordActual: string, passwordNueva: string): Observable<{success: boolean, message: string}> {
-    const data = {
-      username: username,
-      passwordActual: passwordActual,
-      passwordNueva: passwordNueva
-    };
+  updateUsuarioAdmin(usuarioId: number, userData: any): Observable<UsuarioResponseDTO> {
+  console.log('🔧 Actualizando usuario admin ID:', usuarioId, 'con datos:', userData);
 
-    return this.http.put<{success: boolean, message: string}>(`${this.apiUrl}/cambiar-password-simple`, data);
-  }
+  return this.http.put<UsuarioResponseDTO>(`${this.apiUrl}/usuarios/${usuarioId}`, userData).pipe(
+    tap(response => console.log('✅ Usuario admin actualizado:', response)),
+    catchError(error => {
+      console.error('❌ Error actualizando usuario admin:', error);
+      throw error;
+    })
+  );
+}
+
+// ✅ NUEVO: Cambiar contraseña de forma simple
+cambiarPasswordSimple(username: string, passwordActual: string, passwordNueva: string): Observable<{message: string}> {
+  console.log('🔐 Cambiando contraseña para usuario:', username);
+
+  const passwordData = {
+    username: username,
+    currentPassword: passwordActual,
+    newPassword: passwordNueva
+  };
+
+  return this.http.post<{message: string}>(`${this.apiUrl}/change-password`, passwordData).pipe(
+    tap(response => console.log('✅ Contraseña cambiada exitosamente')),
+    catchError(error => {
+      console.error('❌ Error cambiando contraseña:', error);
+      throw error;
+    })
+  );
+}
+
 }

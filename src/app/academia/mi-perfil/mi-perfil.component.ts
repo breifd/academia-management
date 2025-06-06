@@ -704,6 +704,61 @@ actualizarPerfil(): void {
         this.loading = false;
       }
     });
+
+  } else if (this.esAdmin() && this.usuario?.username) {
+    // ✅ NUEVA LÓGICA PARA ADMINISTRADOR
+    const adminData = {
+      username: this.usuario.username, // No se puede cambiar
+      nombre: formData.nombre,
+      apellido: formData.apellido,
+      rol: this.usuario.rol, // Mantener rol actual
+      // No incluir password aquí, se cambia por separado
+    };
+
+    // Usar el ID del usuario actual (debe estar en la respuesta de login)
+    const usuarioId = this.usuario.id || this.obtenerUsuarioIdDelToken();
+
+    if (!usuarioId) {
+      this.error = 'No se puede identificar el usuario para actualizar';
+      this.loading = false;
+      return;
+    }
+
+    this.usuarioService.updateUsuarioAdmin(usuarioId, adminData).subscribe({
+      next: (response) => {
+        this.successMessage = 'Perfil de administrador actualizado correctamente';
+        this.loading = false;
+
+        // Actualizar datos del usuario actual en memoria
+        if (this.usuario) {
+          this.usuario.nombre = response.nombre;
+          this.usuario.apellido = response.apellido;
+        }
+
+        // Refrescar información del usuario en el auth service
+        this.refreshUserInfo();
+      },
+      error: (err) => {
+        this.error = err.error?.error || 'Error al actualizar el perfil del administrador';
+        this.loading = false;
+        console.error('Error updating admin profile:', err);
+      }
+    });
+  } else {
+    this.error = 'No se puede actualizar el perfil: usuario no identificado correctamente';
+    this.loading = false;
+  }
+}
+private obtenerUsuarioIdDelToken(): number | null {
+  try {
+    const token = localStorage.getItem('jwt_token');
+    if (!token) return null;
+
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.userId || payload.id || null;
+  } catch (error) {
+    console.error('Error obteniendo ID del token:', error);
+    return null;
   }
 }
 

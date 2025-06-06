@@ -60,6 +60,7 @@ export interface UsuarioDTO {
 export interface LoginResponse {
   success: boolean;
   message: string;
+  id?: number;        // ✅ NUEVO: ID del usuario
   username?: string;
   nombre?: string;
   apellido?: string;
