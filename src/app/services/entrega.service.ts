@@ -287,6 +287,34 @@ export class EntregaService {
     return entregas.some(entrega => entrega.tarea?.id === tareaId);
   }
 
+  editarCalificacion(id: number, calificacion: CalificacionDTO, documento?: File): Observable<EntregaResponseDTO> {
+    if (documento) {
+      // Con documento - usar el método que acepta FormData
+      return this.calificarEntregaConDocumento(id, calificacion, documento);
+    } else {
+      // Sin documento - usar el método simple
+      return this.calificarEntrega(id, calificacion);
+    }
+  }
+
+  // Método para verificar si el profesor puede editar la calificación
+  puedeProfesorEditarCalificacion(entrega: EntregaResponseDTO, profesorId?: number): boolean {
+    // Solo se puede editar si está calificada
+    if (entrega.estado !== EstadoEntrega.CALIFICADA) {
+      return false;
+    }
+
+    // Verificar que el profesor logueado sea el dueño de la tarea
+    if (profesorId && entrega.tarea?.profesor?.id !== profesorId) {
+      return false;
+    }
+
+    return true;
+  }
+  eliminarDocumentoProfesor(id: number): Observable<EntregaResponseDTO> {
+    return this.http.delete<EntregaResponseDTO>(`${this.apiUrl}/${id}/documento-profesor`);
+  }
+
 
 
 }

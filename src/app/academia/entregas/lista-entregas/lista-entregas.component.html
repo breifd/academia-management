@@ -181,6 +181,12 @@
                 style="color: white; margin-left: 5px;">
                 {{ esAlumno() ? '📝' : '✏️' }}
               </button>
+              <button
+                *ngIf="puedeEditarCalificacion(entrega)"
+                class="btn-icon btn-edit-grade"
+                title="Editar calificación"
+                (click)="editarCalificacion(entrega.id!)"
+                style="background-color: #ff9800; color: white; margin-left: 5px;">📝</button>
 
               <!-- Eliminar (solo admin) -->
               <button

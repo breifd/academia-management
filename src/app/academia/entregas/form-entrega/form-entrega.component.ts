@@ -10,7 +10,7 @@ import { TareaResponseDTO, TareaSimpleDTO } from '../../../interfaces/tarea-enti
 import { CalificacionDTO, EntregaCreateDTO, EntregaRequestDTO, EntregaResponseDTO, EstadoEntrega } from '../../../interfaces/entregas-entity';
 import { LoginResponse, RolUsuario } from '../../../interfaces/usuario';
 
-export type FormMode = 'view' | 'edit' | 'crear' | 'calificar';
+export type FormMode = 'view' | 'edit' | 'crear' | 'calificar' | 'editar-calificacion';
 
 @Component({
   selector: 'app-form-entrega',
@@ -166,7 +166,7 @@ export class FormEntregaComponent implements OnInit {
       this.calificacionForm.disable();
     } else {
       this.entregaForm.enable();
-      if (this.mode === 'calificar') {
+      if (this.mode === 'calificar' || this.mode === 'editar-calificacion') {
         this.calificacionForm.enable();
       }
     }
@@ -358,6 +358,68 @@ uploadFile(): void {
       });
     }
   }
+ editarCalificacion(): void {
+    if (this.calificacionForm.invalid || !this.entregaID) {
+      this.calificacionForm.markAllAsTouched();
+      return;
+    }
+
+    this.loading = true;
+    this.error = null;
+    this.successMessage = null;
+
+    const calificacionData: CalificacionDTO = {
+      nota: this.calificacionForm.get('nota')?.value,
+      comentarios: this.calificacionForm.get('comentarios')?.value || ''
+    };
+
+    console.log('🔄 Editando calificación con documento:', !!this.archivoProfesorSeleccionado);
+
+    // ✅ DECIDIR QUÉ MÉTODO USAR SEGÚN SI HAY DOCUMENTO NUEVO
+    if (this.archivoProfesorSeleccionado) {
+      // Con documento nuevo - usar FormData
+      this.entregaService.calificarEntregaConDocumento(
+        this.entregaID,
+        calificacionData,
+        this.archivoProfesorSeleccionado
+      ).subscribe({
+        next: (entrega) => {
+          this.entrega = entrega;
+          this.nombreArchivoProfesor = entrega.nombreDocumentoProfesor || null;
+          this.successMessage = '✅ Calificación editada correctamente con nuevo documento';
+          this.loading = false;
+
+          // Limpiar archivo seleccionado
+          this.archivoProfesorSeleccionado = null;
+          const fileInput = document.getElementById('documentoProfesor') as HTMLInputElement;
+          if (fileInput) fileInput.value = '';
+
+          setTimeout(() => this.router.navigate(['/entregas']), 2000);
+        },
+        error: (err) => {
+          console.error('❌ Error al editar calificación con documento:', err);
+          this.error = err.error?.error || 'Error al editar la calificación. Inténtelo de nuevo.';
+          this.loading = false;
+        }
+      });
+    } else {
+      // Sin documento nuevo - usar JSON simple
+      this.entregaService.calificarEntrega(this.entregaID, calificacionData).subscribe({
+        next: (entrega) => {
+          this.entrega = entrega;
+          this.successMessage = '✅ Calificación editada correctamente';
+          this.loading = false;
+          setTimeout(() => this.router.navigate(['/entregas']), 2000);
+        },
+        error: (err) => {
+          console.error('❌ Error al editar calificación:', err);
+          this.error = err.error?.error || 'Error al editar la calificación. Inténtelo de nuevo.';
+          this.loading = false;
+        }
+      });
+    }
+  }
+
 
   guardar(): void {
     if (this.mode === 'crear') {
@@ -366,6 +428,8 @@ uploadFile(): void {
       this.actualizarEntrega();
     } else if (this.mode === 'calificar') {
       this.calificarEntrega();
+    } else if (this.mode === 'editar-calificacion') {
+    this.editarCalificacion();
     }
   }
 
@@ -383,6 +447,7 @@ uploadFile(): void {
       case 'view': return 'Ver';
       case 'edit': return 'Editar';
       case 'calificar': return 'Calificar';
+      case 'editar-calificacion': return 'Editar Calificación';
       default: return 'Hacer';
     }
   }
@@ -437,7 +502,7 @@ uploadFile(): void {
   }
 
   mostrarFormularioCalificacion(): boolean {
-    return this.mode === 'calificar' || (this.mode === 'view' && this.entrega?.nota !== undefined);
+    return this.mode === 'calificar' || this.mode === 'editar-calificacion' ||  (this.mode === 'view' && this.entrega?.nota !== undefined);
   }
 
   // ✅ MÉTODO NUEVO: Verificar advertencias de tarea vencida
@@ -541,6 +606,56 @@ getMensajeEstado(): string {
       });
     }
   }
+
+  eliminarDocumentoProfesorActual(): void {
+    if (!this.entregaID) {
+      this.error = "No se puede eliminar el documento sin ID de entrega";
+      return;
+    }
+
+    if (confirm('¿Está seguro de que desea eliminar el documento actual? Esta acción no se puede deshacer.')) {
+      this.loading = true;
+      this.error = null;
+
+      // ✅ OPCIÓN 1: Llamar al backend para eliminar el documento
+      this.entregaService.eliminarDocumentoProfesor(this.entregaID).subscribe({
+        next: (entrega) => {
+          // Actualizar los datos locales
+          this.entrega = entrega;
+          this.nombreArchivoProfesor = null;
+          this.archivoProfesorSeleccionado = null;
+
+          // Limpiar input file
+          const fileInput = document.getElementById('documentoProfesor') as HTMLInputElement;
+          if (fileInput) fileInput.value = '';
+
+          this.successMessage = '✅ Documento del profesor eliminado correctamente';
+          this.loading = false;
+          setTimeout(() => this.successMessage = null, 3000);
+        },
+        error: (err) => {
+          console.error('❌ Error al eliminar documento:', err);
+          this.error = 'Error al eliminar el documento del profesor';
+          this.loading = false;
+        }
+      });
+    }
+  }
+  cancelarSeleccionArchivo(): void {
+    this.archivoProfesorSeleccionado = null;
+
+    // Limpiar input file
+    const fileInput = document.getElementById('documentoProfesor') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+  }
+
+
+  handleEditError(err: any): void {
+    console.error('❌ Error al editar calificación:', err);
+    this.error = err.error?.error || 'Error al editar la calificación. Inténtelo de nuevo.';
+    this.loading = false;
+  }
+
 
 
 

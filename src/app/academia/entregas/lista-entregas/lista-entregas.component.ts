@@ -839,6 +839,40 @@ loadEntregasByAlumnoEspecifico(): void {
     return this.alumnoEspecifico;
   }
 
+  puedeEditarCalificacion(entrega: EntregaResponseDTO): boolean {
+    // Solo profesores pueden editar calificaciones
+    if (!this.esProfesor()) return false;
+
+    // Solo si la entrega está calificada
+    if (entrega.estado !== EstadoEntrega.CALIFICADA) return false;
+
+    // Solo si es el profesor que creó la tarea
+    const profesorDeLaTarea = entrega.tarea?.profesor?.id;
+    const profesorLoggeado = this.usuario?.profesorId;
+
+    return profesorDeLaTarea === profesorLoggeado;
+  }
+
+  // Agregar este método para la acción de editar calificación
+  editarCalificacion(id: number): void {
+    const entrega = this.entregas.find(e => e.id === id);
+
+    if (!entrega) {
+      this.error = "❌ Entrega no encontrada";
+      return;
+    }
+
+    if (!this.puedeEditarCalificacion(entrega)) {
+      this.error = "❌ No tienes permisos para editar esta calificación";
+      setTimeout(() => this.error = null, 5000);
+      return;
+    }
+
+    // Navegar al formulario en modo editar-calificacion
+    const queryParams = { modo: 'editar-calificacion' };
+    this.router.navigate(['/entregas', id], { queryParams });
+  }
+
 
 
 }

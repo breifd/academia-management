@@ -111,9 +111,11 @@ export class FormTareasComponent implements OnInit {
           this.cursos = page.content.filter(c =>
             c.profesores?.some(p => p.id === this.usuario!.profesorId)
           );
+          console.log('📚 Cursos del profesor:', this.cursos.length);
         } else {
           // Admin o alumno, tomamos todo
           this.cursos = page.content;
+          console.log('📚 Todos los cursos:', this.cursos.length);
         }
       },
       error: err => {
@@ -155,7 +157,9 @@ export class FormTareasComponent implements OnInit {
         } else {
           this.error = null;
         }
-      }
+      }else {
+          this.error=null;
+        }
 
       // Cargar los alumnos del curso
       if (cursoSeleccionado && cursoSeleccionado.alumnos) {
@@ -165,6 +169,7 @@ export class FormTareasComponent implements OnInit {
       }
     } else {
       this.alumnosDelCurso = [];
+      this.error=null;
     }
   }
 
