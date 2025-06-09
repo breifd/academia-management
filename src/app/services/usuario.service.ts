@@ -75,17 +75,6 @@ export class UsuarioService {
   );;
   }
 
-  updateUsuarioAdmin(usuarioId: number, userData: any): Observable<UsuarioResponseDTO> {
-  console.log('🔧 Actualizando usuario admin ID:', usuarioId, 'con datos:', userData);
-
-  return this.http.put<UsuarioResponseDTO>(`${this.apiUrl}/usuarios/${usuarioId}`, userData).pipe(
-    tap(response => console.log('✅ Usuario admin actualizado:', response)),
-    catchError(error => {
-      console.error('❌ Error actualizando usuario admin:', error);
-      throw error;
-    })
-  );
-}
 
 // ✅ NUEVO: Cambiar contraseña de forma simple
 cambiarPasswordSimple(username: string, passwordActual: string, passwordNueva: string): Observable<{message: string}> {
@@ -101,6 +90,57 @@ cambiarPasswordSimple(username: string, passwordActual: string, passwordNueva: s
     tap(response => console.log('✅ Contraseña cambiada exitosamente')),
     catchError(error => {
       console.error('❌ Error cambiando contraseña:', error);
+      throw error;
+    })
+  );
+}
+
+cambiarPassword(username: string, passwordActual: string, passwordNueva: string): Observable<{message: string}> {
+    const payload = {
+      username: username,
+      passwordActual: passwordActual,
+      passwordNueva: passwordNueva
+    };
+
+    console.log('🔐 Cambiando contraseña para usuario:', username);
+
+    return this.http.post<{message: string}>(`${this.apiUrl}/cambiar-password`, payload).pipe(
+      tap(result => console.log('✅ Contraseña cambiada exitosamente')),
+      catchError(error => {
+        console.error('❌ Error al cambiar contraseña:', error);
+        throw error;
+      })
+    );
+  }
+
+  /**
+   * Método específico para actualizar datos de usuario (para admins)
+   */
+  updateUsuarioAdmin(usuarioId: number, datos: any): Observable<UsuarioResponseDTO> {
+    console.log('👑 Actualizando datos de administrador:', {
+      usuarioId,
+      datos
+    });
+
+    return this.http.put<UsuarioResponseDTO>(`${this.apiUrl}/usuarios/${usuarioId}`, datos).pipe(
+      tap(result => console.log('✅ Administrador actualizado exitosamente:', result)),
+      catchError(error => {
+        console.error('❌ Error al actualizar administrador:', error);
+        throw error;
+      })
+    );
+  }
+
+  updatePerfilAdministrador(usuarioId: number, datos: {nombre: string, apellido: string}): Observable<any> {
+  console.log('👑 Actualizando perfil de administrador:', {
+    usuarioId,
+    datos
+  });
+
+  return this.http.put<any>(`${this.apiUrl}/admin/${usuarioId}/perfil`, datos).pipe(
+    tap(result => console.log('✅ Perfil de admin actualizado exitosamente:', result)),
+    catchError(error => {
+      console.error('❌ Error al actualizar perfil de admin:', error);
       throw error;
     })
   );

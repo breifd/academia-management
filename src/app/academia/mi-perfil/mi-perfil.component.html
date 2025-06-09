@@ -92,46 +92,57 @@
                   </div>
                 </div>
 
-                <!-- Email -->
-                <div class="form-group">
-                  <label for="email">Email</label>
-                  <input
-                    type="email"
-                    id="email"
-                    formControlName="email"
-                    [class.error]="perfilForm.get('email')?.invalid && perfilForm.get('email')?.touched">
-                  <div *ngIf="perfilForm.get('email')?.invalid && perfilForm.get('email')?.touched" class="error-message">
-                    Ingrese un email válido
+                <!-- ✅ MOSTRAR CAMPOS ADICIONALES SOLO PARA ALUMNO Y PROFESOR -->
+                <ng-container *ngIf="!esAdmin()">
+                  <!-- Email -->
+                  <div class="form-group">
+                    <label for="email">Email</label>
+                    <input
+                      type="email"
+                      id="email"
+                      formControlName="email"
+                      [class.error]="perfilForm.get('email')?.invalid && perfilForm.get('email')?.touched">
+                    <div *ngIf="perfilForm.get('email')?.invalid && perfilForm.get('email')?.touched" class="error-message">
+                      Ingrese un email válido
+                    </div>
                   </div>
-                </div>
 
-                <!-- Teléfono -->
-                <div class="form-group">
-                  <label for="telefono">Teléfono</label>
-                  <input type="tel" id="telefono" formControlName="telefono">
-                </div>
+                  <!-- Teléfono -->
+                  <div class="form-group">
+                    <label for="telefono">Teléfono</label>
+                    <input type="tel" id="telefono" formControlName="telefono">
+                  </div>
 
-                <!-- Campos específicos para profesor -->
-                <div *ngIf="esProfesor()" class="form-group">
-                  <label for="especialidad">Especialidad</label>
-                  <input type="text" id="especialidad" formControlName="especialidad">
-                </div>
+                  <!-- Campos específicos para profesor -->
+                  <div *ngIf="esProfesor()" class="form-group">
+                    <label for="especialidad">Especialidad</label>
+                    <input type="text" id="especialidad" formControlName="especialidad">
+                  </div>
 
-                <div *ngIf="esProfesor()" class="form-group">
-                  <label for="anhosExperiencia">Años de Experiencia</label>
-                  <input type="number" id="anhosExperiencia" formControlName="anhosExperiencia" min="0">
-                </div>
+                  <div *ngIf="esProfesor()" class="form-group">
+                    <label for="anhosExperiencia">Años de Experiencia</label>
+                    <input type="number" id="anhosExperiencia" formControlName="anhosExperiencia" min="0">
+                  </div>
 
-                <!-- Campo específico para alumno -->
-                <div *ngIf="esAlumno()" class="form-group">
-                  <label for="fechaNacimiento">Fecha de Nacimiento</label>
-                  <input type="date" id="fechaNacimiento" formControlName="fechaNacimiento">
-                </div>
+                  <!-- Campo específico para alumno -->
+                  <div *ngIf="esAlumno()" class="form-group">
+                    <label for="fechaNacimiento">Fecha de Nacimiento</label>
+                    <input type="date" id="fechaNacimiento" formControlName="fechaNacimiento">
+                  </div>
 
-                <!-- Dirección - span 2 columnas -->
-                <div class="form-group full-width">
-                  <label for="direccion">Dirección</label>
-                  <textarea id="direccion" formControlName="direccion" rows="2"></textarea>
+                  <!-- Dirección - span 2 columnas -->
+                  <div class="form-group full-width">
+                    <label for="direccion">Dirección</label>
+                    <textarea id="direccion" formControlName="direccion" rows="2"></textarea>
+                  </div>
+                </ng-container>
+
+                <!-- ✅ MENSAJE INFORMATIVO PARA ADMINISTRADOR -->
+                <div *ngIf="esAdmin()" class="form-group full-width">
+                  <div class="admin-info-message">
+                    <span class="info-icon">ℹ️</span>
+                    <span>Como administrador, solo puedes modificar tu nombre y apellido. Para cambios adicionales contacta con el administrador del sistema.</span>
+                  </div>
                 </div>
               </div>
 

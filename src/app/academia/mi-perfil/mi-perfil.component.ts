@@ -181,7 +181,7 @@ export class MiPerfilComponent implements OnInit {
   // CARGA DE DATOS DEL PERFIL
   // ================================
 
-  loadDatosPerfil(): void {
+ loadDatosPerfil(): void {
     if (!this.usuario) return;
 
     this.loadingPerfil = true;
@@ -191,15 +191,47 @@ export class MiPerfilComponent implements OnInit {
       this.loadDatosAlumno(this.usuario.alumnoId);
     } else if (this.esProfesor() && this.usuario.profesorId) {
       this.loadDatosProfesor(this.usuario.profesorId);
+    } else if (this.esAdmin()) {
+      // ✅ NUEVO: Cargar datos del administrador
+      this.loadDatosAdmin();
     } else {
-      // Para admin, solo mostrar datos básicos del usuario
-      this.perfilForm.patchValue({
-        nombre: this.usuario.nombre,
-        apellido: this.usuario.apellido
-      });
       this.loadingPerfil = false;
     }
   }
+
+  loadDatosAdmin(): void {
+    if (!this.usuario?.username) {
+      this.loadingPerfil = false;
+      return;
+    }
+
+    // Para admin, cargar datos del usuario desde el servicio
+    this.usuarioService.getUsuario(this.usuario.username).subscribe({
+      next: (usuario) => {
+        this.perfilForm.patchValue({
+          nombre: usuario.nombre,
+          apellido: usuario.apellido,
+          email: '', // Los admins no tienen email en el perfil base
+          telefono: '', // Los admins no tienen teléfono en el perfil base
+          direccion: '' // Los admins no tienen dirección en el perfil base
+        });
+        this.loadingPerfil = false;
+      },
+      error: (err) => {
+        // Si no se puede cargar desde el servicio, usar datos del usuario actual
+        console.warn('No se pudieron cargar datos del admin desde el servicio, usando datos del usuario actual');
+        this.perfilForm.patchValue({
+          nombre: this.usuario?.nombre || '',
+          apellido: this.usuario?.apellido || '',
+          email: '',
+          telefono: '',
+          direccion: ''
+        });
+        this.loadingPerfil = false;
+      }
+    });
+  }
+
 
   loadDatosAlumno(alumnoId: number): void {
     this.alumnoService.getAlumnoByID(alumnoId).subscribe({
@@ -707,99 +739,193 @@ actualizarPerfil(): void {
 
   } else if (this.esAdmin() && this.usuario?.username) {
     // ✅ NUEVA LÓGICA PARA ADMINISTRADOR
-    const adminData = {
-      username: this.usuario.username, // No se puede cambiar
-      nombre: formData.nombre,
-      apellido: formData.apellido,
-      rol: this.usuario.rol, // Mantener rol actual
-      // No incluir password aquí, se cambia por separado
-    };
-
-    // Usar el ID del usuario actual (debe estar en la respuesta de login)
-    const usuarioId = this.usuario.id || this.obtenerUsuarioIdDelToken();
-
-    if (!usuarioId) {
-      this.error = 'No se puede identificar el usuario para actualizar';
-      this.loading = false;
-      return;
-    }
-
-    this.usuarioService.updateUsuarioAdmin(usuarioId, adminData).subscribe({
-      next: (response) => {
-        this.successMessage = 'Perfil de administrador actualizado correctamente';
-        this.loading = false;
-
-        // Actualizar datos del usuario actual en memoria
-        if (this.usuario) {
-          this.usuario.nombre = response.nombre;
-          this.usuario.apellido = response.apellido;
-        }
-
-        // Refrescar información del usuario en el auth service
-        this.refreshUserInfo();
-      },
-      error: (err) => {
-        this.error = err.error?.error || 'Error al actualizar el perfil del administrador';
-        this.loading = false;
-        console.error('Error updating admin profile:', err);
-      }
-    });
+    this.actualizarPerfilAdminAlternativo(formData);
   } else {
     this.error = 'No se puede actualizar el perfil: usuario no identificado correctamente';
     this.loading = false;
   }
 }
-private obtenerUsuarioIdDelToken(): number | null {
-  try {
-    const token = localStorage.getItem('jwt_token');
-    if (!token) return null;
+ actualizarPerfilAdminAlternativo(formData: any): void {
+    if (!this.usuario?.username) {
+      this.error = 'No se puede identificar el usuario administrador';
+      this.loading = false;
+      return;
+    }
 
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.userId || payload.id || null;
-  } catch (error) {
-    console.error('Error obteniendo ID del token:', error);
-    return null;
+    console.log('👑 === ACTUALIZANDO ADMIN CON ENDPOINT ESPECÍFICO ===');
+
+    // Obtener el usuario completo primero para obtener el ID
+    this.usuarioService.getUsuario(this.usuario.username).subscribe({
+      next: (usuarioCompleto) => {
+        console.log('✅ Usuario completo obtenido:', usuarioCompleto);
+
+        // ✅ PREPARAR SOLO NOMBRE Y APELLIDO
+        const datosAdmin = {
+          nombre: formData.nombre.trim(),
+          apellido: formData.apellido.trim()
+        };
+
+        console.log('📤 Enviando datos de admin:', datosAdmin);
+
+        // ✅ USAR ENDPOINT ESPECÍFICO PARA ADMIN
+        this.usuarioService.updatePerfilAdministrador(usuarioCompleto.id, datosAdmin).subscribe({
+          next: (response) => {
+            console.log('✅ Respuesta del servidor:', response);
+
+            this.successMessage = 'Perfil de administrador actualizado correctamente';
+            this.loading = false;
+
+            // ✅ ACTUALIZAR DATOS DEL USUARIO EN MEMORIA
+            if (this.usuario) {
+              this.usuario.nombre = response.nombre;
+              this.usuario.apellido = response.apellido;
+            }
+
+            // ✅ REFRESCAR INFORMACIÓN DEL USUARIO
+            this.refreshUserInfo();
+
+            // ✅ LIMPIAR MENSAJE DESPUÉS DE UN TIEMPO
+            setTimeout(() => {
+              this.successMessage = null;
+            }, 5000);
+          },
+          error: (err) => {
+            console.error('❌ Error al actualizar administrador:', err);
+            this.error = err.error?.error || 'Error al actualizar el perfil del administrador';
+            this.loading = false;
+
+            // ✅ LIMPIAR ERROR DESPUÉS DE UN TIEMPO
+            setTimeout(() => {
+              this.error = null;
+            }, 8000);
+          }
+        });
+      },
+      error: (err) => {
+        console.error('❌ Error al obtener información del usuario:', err);
+        this.error = 'Error al obtener información del usuario administrador';
+        this.loading = false;
+      }
+    });
   }
-}
+
+  actualizarPerfilAdmin(formData: any): void {
+      if (!this.usuario?.username) {
+      this.error = 'No se puede identificar el usuario administrador';
+      this.loading = false;
+      return;
+    }
+
+    console.log('👑 === ACTUALIZANDO ADMIN CON ENDPOINT ESPECÍFICO ===');
+
+    // Obtener el usuario completo primero para obtener el ID
+    this.usuarioService.getUsuario(this.usuario.username).subscribe({
+      next: (usuarioCompleto) => {
+        console.log('✅ Usuario completo obtenido:', usuarioCompleto);
+
+        // ✅ PREPARAR SOLO NOMBRE Y APELLIDO
+        const datosAdmin = {
+          nombre: formData.nombre.trim(),
+          apellido: formData.apellido.trim()
+        };
+
+        console.log('📤 Enviando datos de admin:', datosAdmin);
+
+        // ✅ USAR ENDPOINT ESPECÍFICO PARA ADMIN
+        this.usuarioService.updatePerfilAdministrador(usuarioCompleto.id, datosAdmin).subscribe({
+          next: (response) => {
+            console.log('✅ Respuesta del servidor:', response);
+
+            this.successMessage = 'Perfil de administrador actualizado correctamente';
+            this.loading = false;
+
+            // ✅ ACTUALIZAR DATOS DEL USUARIO EN MEMORIA
+            if (this.usuario) {
+              this.usuario.nombre = response.nombre;
+              this.usuario.apellido = response.apellido;
+            }
+
+            // ✅ REFRESCAR INFORMACIÓN DEL USUARIO
+            this.refreshUserInfo();
+
+            // ✅ LIMPIAR MENSAJE DESPUÉS DE UN TIEMPO
+            setTimeout(() => {
+              this.successMessage = null;
+            }, 5000);
+          },
+          error: (err) => {
+            console.error('❌ Error al actualizar administrador:', err);
+            this.error = err.error?.error || 'Error al actualizar el perfil del administrador';
+            this.loading = false;
+
+            // ✅ LIMPIAR ERROR DESPUÉS DE UN TIEMPO
+            setTimeout(() => {
+              this.error = null;
+            }, 8000);
+          }
+        });
+      },
+      error: (err) => {
+        console.error('❌ Error al obtener información del usuario:', err);
+        this.error = 'Error al obtener información del usuario administrador';
+        this.loading = false;
+      }
+    });
+  }
+
+ obtenerUsuarioIdDelToken(): number | null {
+    try {
+      const token = localStorage.getItem('jwt_token');
+      if (!token) return null;
+
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.userId || payload.id || null;
+    } catch (error) {
+      console.error('Error obteniendo ID del token:', error);
+      return null;
+    }
+  }
 
   cambiarPassword(): void {
-  if (this.passwordForm.invalid) {
-    this.passwordForm.markAllAsTouched();
-    this.error = 'Por favor, complete todos los campos de contraseña correctamente.';
-    return;
-  }
-
-  if (!this.usuario?.username) {
-    this.error = 'No se puede cambiar la contraseña: usuario no identificado';
-    return;
-  }
-
-  this.loading = true;
-  this.error = null;
-  this.successMessage = null;
-
-  const passwordData = this.passwordForm.value;
-
-  this.usuarioService.cambiarPasswordSimple(
-    this.usuario.username,
-    passwordData.passwordActual,
-    passwordData.passwordNueva
-  ).subscribe({
-    next: (response) => {
-      this.successMessage = response.message || 'Contraseña actualizada correctamente';
-      this.loading = false;
-      this.passwordForm.reset();
-    },
-    error: (err) => {
-      this.error = err.error?.error || 'Error al cambiar la contraseña';
-      this.loading = false;
-
-      if (this.error && this.error.includes('contraseña actual')) {
-        this.passwordForm.get('passwordActual')?.setErrors({ 'incorrect': true });
-      }
+    if (this.passwordForm.invalid) {
+      this.passwordForm.markAllAsTouched();
+      this.error = 'Por favor, complete todos los campos de contraseña correctamente.';
+      return;
     }
-  });
-}
+
+    if (!this.usuario?.username) {
+      this.error = 'No se puede cambiar la contraseña: usuario no identificado';
+      return;
+    }
+
+    this.loading = true;
+    this.error = null;
+    this.successMessage = null;
+
+    const passwordData = this.passwordForm.value;
+
+    // ✅ USAR MÉTODO SIMPLE QUE FUNCIONA PARA TODOS LOS ROLES
+    this.usuarioService.cambiarPassword(
+      this.usuario.username,
+      passwordData.passwordActual,
+      passwordData.passwordNueva
+    ).subscribe({
+      next: (response) => {
+        this.successMessage = 'Contraseña actualizada correctamente';
+        this.loading = false;
+        this.passwordForm.reset();
+      },
+      error: (err) => {
+        this.error = err.error?.error || 'Error al cambiar la contraseña';
+        this.loading = false;
+
+        // Marcar error específico en contraseña actual si es el caso
+        if (this.error && (this.error.includes('contraseña actual') || this.error.includes('actual password'))) {
+          this.passwordForm.get('passwordActual')?.setErrors({ 'incorrect': true });
+        }
+      }
+    });
+  }
 
   refreshUserInfo(): void {
     this.authService.refreshUserInfo().subscribe({
