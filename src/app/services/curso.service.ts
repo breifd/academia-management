@@ -13,7 +13,13 @@ import { AlumnoSimpleDTO } from '../interfaces/alumno-entity';
   providedIn: 'root'
 })
 export class CursoService {
-  private apiUrl = 'http://localhost:8080/api/cursos';
+  private apiUrl = `${this.getApiUrl()}/cursos`;
+
+  private getApiUrl(): string {
+    return window.location.hostname === 'localhost'
+      ? 'http://localhost:8080/api'
+      : 'https://tu-backend-railway.up.railway.app/api';
+  }
   private defaultMaxAlumnos : number =30;
   constructor(private http: HttpClient) { }
 

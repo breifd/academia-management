@@ -13,7 +13,13 @@ import { CursoEntity, CursoSimpleDTO } from '../interfaces/curso-entity';
 })
 export class AlumnoService {
 
-  private apiUrl="http://localhost:8080/api/alumnos";
+  private apiUrl = `${this.getApiUrl()}/alumnos`;
+
+  private getApiUrl(): string {
+    return window.location.hostname === 'localhost'
+      ? 'http://localhost:8080/api'
+      : 'https://tu-backend-railway.up.railway.app/api';
+  }
 
   constructor(private http: HttpClient) { }
 

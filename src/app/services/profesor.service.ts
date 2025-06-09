@@ -9,7 +9,13 @@ import { ProfesorCreateDTO, ProfesorResponseDTO, ProfesorSimpleDTO } from '../in
 })
 export class ProfesorService {
 
-  private apiUrl = "http://localhost:8080/api/profesores";
+  private apiUrl = `${this.getApiUrl()}/profesores`;
+
+  private getApiUrl(): string {
+    return window.location.hostname === 'localhost'
+      ? 'http://localhost:8080/api'
+      : 'https://tu-backend-railway.up.railway.app/api';
+  };
 
   constructor(private http: HttpClient) { }
 

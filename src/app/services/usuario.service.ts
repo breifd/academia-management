@@ -10,7 +10,13 @@ import { UsuarioResponseDTO, RolUsuario, UsuarioCreateDTO, UsuarioDTO } from '..
 })
 export class UsuarioService {
 
-  private apiUrl = 'http://localhost:8080/api'; // URL de la API
+  private apiUrl = `${this.getApiUrl()}`;
+
+  private getApiUrl(): string {
+    return window.location.hostname === 'localhost'
+      ? 'http://localhost:8080/api'
+      : 'https://tu-backend-railway.up.railway.app/api';
+  }
 
   constructor(private http: HttpClient) { }
 

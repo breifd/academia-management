@@ -9,7 +9,13 @@ import { EntregaResponseDTO, EntregaCreateDTO, EstadoEntrega, CalificacionDTO } 
   providedIn: 'root'
 })
 export class EntregaService {
-  private apiUrl = 'http://localhost:8080/api/entregas';
+  private apiUrl = `${this.getApiUrl()}/entregas`;
+
+  private getApiUrl(): string {
+    return window.location.hostname === 'localhost'
+      ? 'http://localhost:8080/api'
+      : 'https://tu-backend-railway.up.railway.app/api';
+  };
 
   constructor(private http: HttpClient) { }
 
