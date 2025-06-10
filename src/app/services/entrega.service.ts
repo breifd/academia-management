@@ -65,8 +65,10 @@ export class EntregaService {
     });
   }
 
-  // Calificar una entrega (solo profesores)
+
+  // ✅ MÉTODO CORREGIDO: Para calificar por primera vez (sin documento)
   calificarEntrega(id: number, calificacion: CalificacionDTO): Observable<EntregaResponseDTO> {
+    console.log('🎯 [SERVICE] Calificando entrega ID:', id, 'sin documento');
     return this.http.post<EntregaResponseDTO>(`${this.apiUrl}/${id}/calificar`, calificacion);
   }
 
@@ -262,12 +264,15 @@ export class EntregaService {
 
   // Calificar entrega con documento opcional
   calificarEntregaConDocumento(id: number, calificacion: CalificacionDTO, documento?: File): Observable<EntregaResponseDTO> {
+    console.log('🎯 [SERVICE] Calificando entrega ID:', id, 'con documento');
+
     const formData = new FormData();
     formData.append('calificacion', JSON.stringify(calificacion));
 
     if (documento) {
       formData.append('documentoProfesor', documento);
     }
+
     return this.http.post<EntregaResponseDTO>(`${this.apiUrl}/${id}/calificar-con-documento`, formData);
   }
 
@@ -290,12 +295,17 @@ export class EntregaService {
   }
 
   editarCalificacion(id: number, calificacion: CalificacionDTO, documento?: File): Observable<EntregaResponseDTO> {
+    console.log('📝 [SERVICE] Editando calificación ID:', id);
+
     if (documento) {
       // Con documento - usar el método que acepta FormData
-      return this.calificarEntregaConDocumento(id, calificacion, documento);
+      const formData = new FormData();
+      formData.append('calificacion', JSON.stringify(calificacion));
+      formData.append('documentoProfesor', documento);
+      return this.http.put<EntregaResponseDTO>(`${this.apiUrl}/${id}/editar-calificacion`, formData);
     } else {
       // Sin documento - usar el método simple
-      return this.calificarEntrega(id, calificacion);
+      return this.http.put<EntregaResponseDTO>(`${this.apiUrl}/${id}/calificacion`, calificacion);
     }
   }
 
