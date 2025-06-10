@@ -8,18 +8,13 @@ import { ProfesoresComponent } from '../academia/profesores/lista-profesores/lis
 import { CursoConDetallesDTO, CursoCreateDTO, CursoEntity, CursoResponseDTO, CursoSimpleDTO } from '../interfaces/curso-entity';
 import { ProfesorSimpleDTO } from '../interfaces/profesor-entity';
 import { AlumnoSimpleDTO } from '../interfaces/alumno-entity';
+import { API_CONFIG, ENDPOINTS } from '../app.config';
 
 @Injectable({
   providedIn: 'root'
 })
 export class CursoService {
-  private apiUrl = `${this.getApiUrl()}/cursos`;
-
-  private getApiUrl(): string {
-    return window.location.hostname === 'localhost'
-      ? 'http://localhost:8080/api'
-      : 'https://tu-backend-railway.up.railway.app/api';
-  }
+  private apiUrl = `${API_CONFIG.BASE_URL}${ENDPOINTS.CURSOS}`;
   private defaultMaxAlumnos : number =30;
   constructor(private http: HttpClient) { }
 

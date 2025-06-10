@@ -3,18 +3,14 @@ import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { LoginRequest, LoginResponse, RolUsuario } from '../interfaces/usuario';
+import { API_CONFIG, ENDPOINTS } from '../app.config';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = `${this.getApiUrl()}`;
 
-  private getApiUrl(): string {
-    return window.location.hostname === 'localhost'
-      ? 'http://localhost:8080/api'
-      : 'https://tu-backend-railway.up.railway.app/api';
-  }
+  private apiUrl = `${API_CONFIG.BASE_URL}${ENDPOINTS.AUTH}`;
   private currentUserSubject: BehaviorSubject<LoginResponse | null>;
   public currentUser: Observable<LoginResponse | null>;
 

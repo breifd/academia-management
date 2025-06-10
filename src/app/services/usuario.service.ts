@@ -3,6 +3,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { catchError, Observable, tap } from 'rxjs';
 import { UsuarioResponseDTO, RolUsuario, UsuarioCreateDTO, UsuarioDTO } from '../interfaces/usuario';
+import { API_CONFIG, ENDPOINTS } from '../app.config';
 
 
 @Injectable({
@@ -10,13 +11,7 @@ import { UsuarioResponseDTO, RolUsuario, UsuarioCreateDTO, UsuarioDTO } from '..
 })
 export class UsuarioService {
 
-  private apiUrl = `${this.getApiUrl()}`;
-
-  private getApiUrl(): string {
-    return window.location.hostname === 'localhost'
-      ? 'http://localhost:8080/api'
-      : 'https://tu-backend-railway.up.railway.app/api';
-  }
+  private apiUrl = `${API_CONFIG.BASE_URL}${ENDPOINTS.USUARIOS}`;
 
   constructor(private http: HttpClient) { }
 

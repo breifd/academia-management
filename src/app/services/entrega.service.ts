@@ -3,19 +3,15 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { Page } from '../interfaces/page';
 import { EntregaResponseDTO, EntregaCreateDTO, EstadoEntrega, CalificacionDTO } from '../interfaces/entregas-entity';
+import { API_CONFIG, ENDPOINTS } from '../app.config';
 
 
 @Injectable({
   providedIn: 'root'
 })
 export class EntregaService {
-  private apiUrl = `${this.getApiUrl()}/entregas`;
 
-  private getApiUrl(): string {
-    return window.location.hostname === 'localhost'
-      ? 'http://localhost:8080/api'
-      : 'https://tu-backend-railway.up.railway.app/api';
-  };
+ private apiUrl = `${API_CONFIG.BASE_URL}${ENDPOINTS.ENTREGAS}`;
 
   constructor(private http: HttpClient) { }
 

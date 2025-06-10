@@ -6,6 +6,7 @@ import { Observable } from 'rxjs';
 import { AlumnoCreateDTO, AlumnoEntity, AlumnoResponseDTO } from '../interfaces/alumno-entity';
 
 import { CursoEntity, CursoSimpleDTO } from '../interfaces/curso-entity';
+import { API_CONFIG, ENDPOINTS } from '../app.config';
 
 
 @Injectable({
@@ -13,13 +14,7 @@ import { CursoEntity, CursoSimpleDTO } from '../interfaces/curso-entity';
 })
 export class AlumnoService {
 
-  private apiUrl = `${this.getApiUrl()}/alumnos`;
-
-  private getApiUrl(): string {
-    return window.location.hostname === 'localhost'
-      ? 'http://localhost:8080/api'
-      : 'https://tu-backend-railway.up.railway.app/api';
-  }
+  private apiUrl = `${API_CONFIG.BASE_URL}${ENDPOINTS.ALUMNOS}`;
 
   constructor(private http: HttpClient) { }
 
@@ -32,7 +27,7 @@ export class AlumnoService {
       .set('size', size.toString())
       .set('sort', sort)
       .set('direction', direction);
-    return this.http.get<Page<AlumnoResponseDTO>>(`${this.apiUrl}`,{ params });
+    return this.http.get<Page<AlumnoResponseDTO>>(`${this.apiUrl}`,{ params});
   }
 
   getAlumnoByID(id:number): Observable<AlumnoResponseDTO>{
