@@ -237,7 +237,7 @@
       </form>
     </div>
 
-    <!-- Comentarios existentes (solo en modo vista) -->
+      <!-- Comentarios existentes (solo en modo vista) -->
     <div *ngIf="mostrarFormularioCalificacion()" style="margin-bottom: 20px; grid-column: span 2;">
       <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
         Documento de la calificación (opcional)
@@ -252,7 +252,7 @@
           type="button"
           (click)="descargarDocumentoProfesor()"
           style="background-color: #1976d2; color: white; border: none; border-radius: 4px; padding: 6px 12px; cursor: pointer;"
-          *ngIf="entrega && (mode === 'view' || mode === 'editar-calificacion')">
+          *ngIf="entrega && (mode === 'view' || mode === 'editar-calificacion' || mode === 'calificar')">
           📥 Descargar
         </button>
         <!-- Botón para eliminar documento existente -->
@@ -268,8 +268,8 @@
         </button>
       </div>
 
-      <!-- Selector de archivos para el profesor -->
-       <div *ngIf="mode === 'calificar' || mode === 'editar-calificacion'"
+      <!-- ✅ CAMBIO PRINCIPAL: Selector de archivos ahora disponible en modo calificar también -->
+      <div *ngIf="mode === 'calificar' || mode === 'editar-calificacion'"
           style="display: flex; align-items: center; gap: 10px;">
         <input
           type="file"
@@ -296,12 +296,22 @@
         <div *ngIf="mode === 'editar-calificacion'" style="color: #ff9800; font-size: 12px; margin-top: 4px;">
           💡 Este archivo {{ nombreArchivoProfesor ? 'reemplazará' : 'se agregará como' }} documento de la calificación al guardar
         </div>
+        <!-- ✅ NUEVO: Mensaje para modo calificar -->
+        <div *ngIf="mode === 'calificar'" style="color: #4caf50; font-size: 12px; margin-top: 4px;">
+          💡 Este archivo se adjuntará como documento de retroalimentación al calificar
+        </div>
       </div>
 
       <!-- Mensaje cuando no hay documento y estamos editando -->
       <div *ngIf="mode === 'editar-calificacion' && !nombreArchivoProfesor && !archivoProfesorSeleccionado"
           style="margin-top: 8px; padding: 8px 12px; background-color: #e3f2fd; color: #1976d2; border-radius: 4px; font-size: 14px;">
         📄 Esta calificación no tiene documento adjunto. Puedes agregar uno seleccionando un archivo arriba.
+      </div>
+
+      <!-- ✅ NUEVO: Mensaje informativo para modo calificar -->
+      <div *ngIf="mode === 'calificar' && !archivoProfesorSeleccionado"
+          style="margin-top: 8px; padding: 8px 12px; background-color: #e8f5e9; color: #2e7d32; border-radius: 4px; font-size: 14px;">
+        📄 Opcionalmente puedes adjuntar un documento con retroalimentación detallada para el alumno
       </div>
 
       <div style="margin-top: 6px; font-size: 12px; color: #666;">

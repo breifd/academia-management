@@ -283,58 +283,71 @@ uploadFile(): void {
   }
 }
  calificarEntrega(): void {
-    if (this.calificacionForm.invalid || !this.entregaID) {
-      this.calificacionForm.markAllAsTouched();
-      return;
-    }
-
-    this.loading = true;
-    this.error = null;
-    this.successMessage = null;
-
-    const calificacionData: CalificacionDTO = {
-      nota: this.calificacionForm.get('nota')?.value,
-      comentarios: this.calificacionForm.get('comentarios')?.value || ''
-    };
-
-    // ✅ DECIDIR QUÉ MÉTODO USAR SEGÚN SI HAY DOCUMENTO
-    if (this.archivoProfesorSeleccionado) {
-      // Con documento - usar FormData
-      this.entregaService.calificarEntregaConDocumento(
-        this.entregaID,
-        calificacionData,
-        this.archivoProfesorSeleccionado
-      ).subscribe({
-        next: (entrega) => {
-          this.entrega = entrega;
-          this.nombreArchivoProfesor = entrega.nombreDocumentoProfesor || null;
-          this.successMessage = 'Entrega calificada correctamente con documento adjunto';
-          this.loading = false;
-          setTimeout(() => this.router.navigate(['/entregas']), 2000);
-        },
-        error: (err) => {
-          console.error('❌ Error al calificar con documento:', err);
-          this.error = err.error?.error || 'Error al calificar la entrega. Inténtelo de nuevo más tarde.';
-          this.loading = false;
-        }
-      });
-    } else {
-      // Sin documento - usar JSON
-      this.entregaService.calificarEntrega(this.entregaID, calificacionData).subscribe({
-        next: (entrega) => {
-          this.entrega = entrega;
-          this.successMessage = 'Entrega calificada correctamente';
-          this.loading = false;
-          setTimeout(() => this.router.navigate(['/entregas']), 2000);
-        },
-        error: (err) => {
-          console.error('❌ Error al calificar:', err);
-          this.error = err.error?.error || 'Error al calificar la entrega. Inténtelo de nuevo más tarde.';
-          this.loading = false;
-        }
-      });
-    }
+  if (this.calificacionForm.invalid || !this.entregaID) {
+    this.calificacionForm.markAllAsTouched();
+    return;
   }
+
+  this.loading = true;
+  this.error = null;
+  this.successMessage = null;
+
+  const calificacionData: CalificacionDTO = {
+    nota: this.calificacionForm.get('nota')?.value,
+    comentarios: this.calificacionForm.get('comentarios')?.value || ''
+  };
+
+  console.log('⭐ [CALIFICAR] Calificando entrega con datos:', calificacionData);
+  console.log('📎 [CALIFICAR] Archivo profesor seleccionado:', !!this.archivoProfesorSeleccionado);
+
+  // ✅ LÓGICA SIMPLIFICADA: Usar el método apropiado según si hay documento
+  if (this.archivoProfesorSeleccionado) {
+    // ✅ Con documento - usar FormData
+    console.log('📎 [CALIFICAR] Calificando CON documento del profesor');
+    this.entregaService.calificarEntregaConDocumento(
+      this.entregaID,
+      calificacionData,
+      this.archivoProfesorSeleccionado
+    ).subscribe({
+      next: (entrega) => {
+        console.log('✅ [CALIFICAR] Entrega calificada con documento exitosamente');
+        this.entrega = entrega;
+        this.nombreArchivoProfesor = entrega.nombreDocumentoProfesor || null;
+        this.successMessage = '⭐ Entrega calificada correctamente con documento de retroalimentación adjunto';
+        this.loading = false;
+
+        // Limpiar archivo seleccionado
+        this.archivoProfesorSeleccionado = null;
+        const fileInput = document.getElementById('documentoProfesor') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+
+        setTimeout(() => this.router.navigate(['/entregas']), 2000);
+      },
+      error: (err) => {
+        console.error('❌ [CALIFICAR] Error al calificar con documento:', err);
+        this.error = err.error?.error || 'Error al calificar la entrega con documento. Inténtelo de nuevo.';
+        this.loading = false;
+      }
+    });
+  } else {
+    // ✅ Sin documento - usar JSON simple
+    console.log('📝 [CALIFICAR] Calificando SIN documento del profesor');
+    this.entregaService.calificarEntrega(this.entregaID, calificacionData).subscribe({
+      next: (entrega) => {
+        console.log('✅ [CALIFICAR] Entrega calificada exitosamente');
+        this.entrega = entrega;
+        this.successMessage = '⭐ Entrega calificada correctamente';
+        this.loading = false;
+        setTimeout(() => this.router.navigate(['/entregas']), 2000);
+      },
+      error: (err) => {
+        console.error('❌ [CALIFICAR] Error al calificar:', err);
+        this.error = err.error?.error || 'Error al calificar la entrega. Inténtelo de nuevo.';
+        this.loading = false;
+      }
+    });
+  }
+}
 
   descargarDocumento(): void {
     if (this.entregaID) {
