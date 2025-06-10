@@ -1,4 +1,4 @@
-// app.config.ts - Configuración corregida
+// app.config.ts - Configuración corregida para Railway
 
 import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
 import { provideRouter } from '@angular/router';
@@ -7,53 +7,73 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpInterceptorFn } from '@angular/common/http';
 import { AuthService } from './services/auth.service';
 
-
 export const API_CONFIG = {
-  // 🔥 CAMBIA ESTA URL POR LA TUYA DE RAILWAY
+  // 🔥 URLs CORREGIDAS
   PRODUCTION_URL: 'https://back-academiafinal-production.up.railway.app/api',
   LOCAL_URL: 'http://localhost:8080/api',
 
   get BASE_URL(): string {
     const isLocal = window.location.hostname === 'localhost' ||
-                   window.location.hostname === '127.0.0.1';
+                   window.location.hostname === '127.0.0.1' ||
+                   window.location.hostname === '0.0.0.0';
 
-    const url = isLocal ? this.LOCAL_URL : this.PRODUCTION_URL;
-    console.log('🌐 [API CONFIG] Using URL:', url);
+    // 🆕 NUEVA LÓGICA: Detectar si estamos en Railway por el hostname
+    const isRailway = window.location.hostname.includes('railway.app') ||
+                     window.location.hostname.includes('up.railway.app');
+
+    let url: string;
+
+    if (isLocal) {
+      url = this.LOCAL_URL;
+      console.log('🏠 [API CONFIG] Usando entorno LOCAL');
+    } else if (isRailway || !isLocal) {
+      url = this.PRODUCTION_URL;
+      console.log('🚀 [API CONFIG] Usando entorno PRODUCCIÓN (Railway)');
+    } else {
+      url = this.PRODUCTION_URL;
+      console.log('🌐 [API CONFIG] Usando entorno PRODUCCIÓN por defecto');
+    }
+
+    console.log('🌐 [API CONFIG] URL Final:', url);
+    console.log('🌐 [API CONFIG] Frontend hostname:', window.location.hostname);
+
     return url;
   }
 };
 
-// Endpoints específicos
+// Endpoints específicos (sin cambios)
 export const ENDPOINTS = {
   ALUMNOS: '/alumnos',
   PROFESORES: '/profesores',
   CURSOS: '/cursos',
   TAREAS: '/tareas',
   ENTREGAS: '/entregas',
-  USUARIOS: '/usuarios',
+  USUARIOS: '', // 🔥 IMPORTANTE: Los endpoints de usuario están en la raíz
+  AUTH: '', // 🔥 IMPORTANTE: Los endpoints de auth están en la raíz
   LOGIN: '/login',
-  AUTH: '/me',
   REGISTER: '/register',
   CHANGE_PASSWORD: '/cambiar-password'
 };
-// ✅ INTERCEPTOR FUNCIONAL MEJORADO
-export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
-  console.log('🚨 [JWT INTERCEPTOR] URL:', req.url);
 
-  // Rutas que NO necesitan token usando la configuración
-  const publicRoutes = [
-    `${API_CONFIG.BASE_URL}${ENDPOINTS.LOGIN}`,
-    `${API_CONFIG.BASE_URL}${ENDPOINTS.REGISTER}`,
-    `${API_CONFIG.BASE_URL}/public`,
-    `${API_CONFIG.BASE_URL}/debug-login`,
-    `${API_CONFIG.BASE_URL}/test-auth`,
-    `${API_CONFIG.BASE_URL}/bcrypt-info`
+// ✅ INTERCEPTOR MEJORADO CON MEJOR DETECCIÓN DE RUTAS PÚBLICAS
+export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
+  console.log('🚨 [JWT INTERCEPTOR] URL completa:', req.url);
+
+  // 🔥 RUTAS PÚBLICAS MEJORADAS
+  const publicPaths = [
+    '/login',
+    '/register',
+    '/debug-login',
+    '/test-auth',
+    '/bcrypt-info',
+    '/public'
   ];
 
-  const isPublicRoute = publicRoutes.some(route => req.url.includes(route.replace(API_CONFIG.BASE_URL, '')));
+  // Verificar si es una ruta pública
+  const isPublicRoute = publicPaths.some(path => req.url.includes(path));
 
   if (isPublicRoute) {
-    console.log('🟢 [JWT INTERCEPTOR] Ruta pública');
+    console.log('🟢 [JWT INTERCEPTOR] Ruta pública detectada');
     return next(req);
   }
 
@@ -61,39 +81,45 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   const token = localStorage.getItem('jwt_token');
 
   if (!token) {
-    console.log('❌ [JWT INTERCEPTOR] Sin token');
+    console.log('❌ [JWT INTERCEPTOR] Sin token disponible');
     return next(req);
   }
 
-  // Verificar expiración
+  // Verificar expiración del token
   if (isTokenExpired(token)) {
-    console.log('⏰ [JWT INTERCEPTOR] Token expirado');
+    console.log('⏰ [JWT INTERCEPTOR] Token expirado, limpiando localStorage');
     localStorage.removeItem('jwt_token');
     localStorage.removeItem('current_user');
     return next(req);
   }
 
-  console.log('✅ [JWT INTERCEPTOR] Agregando token');
+  console.log('✅ [JWT INTERCEPTOR] Agregando token válido al request');
 
   // Clonar request con Authorization header
   const authReq = req.clone({
     setHeaders: {
-      'Authorization': `Bearer ${token}`
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
     }
   });
 
-  console.log('📤 [JWT INTERCEPTOR] Request con Authorization header enviada');
   return next(authReq);
 };
 
-// Función auxiliar para verificar expiración
+// Función auxiliar para verificar expiración del token
 function isTokenExpired(token: string): boolean {
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));
     const currentTime = Math.floor(Date.now() / 1000);
-    return payload.exp < currentTime;
+    const isExpired = payload.exp < currentTime;
+
+    if (isExpired) {
+      console.log('⏰ Token expirado. Exp:', new Date(payload.exp * 1000), 'Actual:', new Date());
+    }
+
+    return isExpired;
   } catch (error) {
-    console.error('[JWT INTERCEPTOR] Error:', error);
+    console.error('[JWT INTERCEPTOR] Error verificando token:', error);
     return true;
   }
 }
@@ -103,26 +129,31 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
-
-    // ✅ USAR SOLO EL INTERCEPTOR FUNCIONAL
     provideHttpClient(withInterceptors([jwtInterceptor])),
-
-    // Servicios
     AuthService
   ]
 };
 
-// ✅ DEBUGGING: Verificar token al cargar la app
+// 🔥 DEBUGGING MEJORADO
 if (typeof window !== 'undefined') {
   const token = localStorage.getItem('jwt_token');
   const user = localStorage.getItem('current_user');
 
-  console.log('🔍 [APP CONFIG] Token en localStorage:', token ? 'SÍ' : 'NO');
-  console.log('🔍 [APP CONFIG] User en localStorage:', user ? 'SÍ' : 'NO');
-  console.log('🌐 [APP CONFIG] API Base URL:', API_CONFIG.BASE_URL);
+  console.log('🔍 [APP CONFIG DEBUG] ===== INFORMACIÓN DE CONFIGURACIÓN =====');
+  console.log('🔍 [APP CONFIG] Frontend URL:', window.location.href);
+  console.log('🔍 [APP CONFIG] Frontend hostname:', window.location.hostname);
+  console.log('🔍 [APP CONFIG] API Base URL:', API_CONFIG.BASE_URL);
+  console.log('🔍 [APP CONFIG] Token presente:', token ? 'SÍ' : 'NO');
+  console.log('🔍 [APP CONFIG] User presente:', user ? 'SÍ' : 'NO');
 
   if (token) {
-    console.log('🔍 [APP CONFIG] Token válido:', !isTokenExpired(token));
-  }
-}
+    const isValidToken = !isTokenExpired(token);
+    console.log('🔍 [APP CONFIG] Token válido:', isValidToken);
 
+    if (!isValidToken) {
+      console.log('⚠️ [APP CONFIG] Token expirado, será removido automáticamente');
+    }
+  }
+
+  console.log('🔍 [APP CONFIG] ===============================================');
+}

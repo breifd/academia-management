@@ -11,7 +11,7 @@ import { API_CONFIG, ENDPOINTS } from '../app.config';
 })
 export class UsuarioService {
 
-  private apiUrl = `${API_CONFIG.BASE_URL}${ENDPOINTS.USUARIOS}`;
+  private apiUrl = `${API_CONFIG.BASE_URL}`;
 
   constructor(private http: HttpClient) { }
 

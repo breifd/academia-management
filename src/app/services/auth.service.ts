@@ -10,7 +10,7 @@ import { API_CONFIG, ENDPOINTS } from '../app.config';
 })
 export class AuthService {
 
-  private apiUrl = `${API_CONFIG.BASE_URL}${ENDPOINTS.AUTH}`;
+  private apiUrl = `${API_CONFIG.BASE_URL}`;
   private currentUserSubject: BehaviorSubject<LoginResponse | null>;
   public currentUser: Observable<LoginResponse | null>;
 
